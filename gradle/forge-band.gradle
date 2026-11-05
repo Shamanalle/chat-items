@@ -1,0 +1,80 @@
+// A Forge build for one band of Minecraft versions from 1.20.6 onwards (forge-1.20.6 ... forge-26).
+// Since 1.20.6 Forge runs with Minecraft's own official names, so the shared code is compiled against
+// official Mojang mappings (without remapping the output jar) plus Forge's published universal jar and
+// userdev libraries. Its jar is an input of the universal Forge / NeoForge jar (see the root build.gradle).
+//
+// The module applies Loom (fabric-loom, or net.fabricmc.fabric-loom for 26.x) and sets, before applying this file:
+//   forgeTarget   the file's version range, "mc1.21.9-1.21.10"
+//   forgeVersion  the gradle.properties key of the Forge version it compiles against
+//   forgeShared   the shared folders it compiles, in order of precedence
+
+evaluationDependsOn(':common')
+
+version = "${project.mod_version}+${forgeTarget}"
+
+base {
+    archivesName = "chat-items-forge"
+}
+
+def forge = project.findProperty("loaderOverride.${project.name}") ?: project.property(forgeVersion)
+def minecraftVersion = forge.substring(0, forge.indexOf('-'))
+def obfuscated = !minecraftVersion.startsWith('26')
+
+repositories {
+    maven { url = uri("https://maven.minecraftforge.net/") }
+    maven { url = uri("https://libraries.minecraft.net/") }
+    mavenCentral()
+}
+
+apply from: "${rootDir}/gradle/shared-sources.gradle"
+useShared(forgeShared)
+
+configurations {
+    forgeUserdev
+}
+
+dependencies {
+    forgeUserdev "net.minecraftforge:forge:${forge}:userdev@jar"
+    implementation project(':common')
+    minecraft "com.mojang:minecraft:${minecraftVersion}"
+    if (obfuscated) {
+        mappings loom.officialMojangMappings()
+    }
+    compileOnly "net.minecraftforge:forge:${forge}:universal@jar"
+}
+
+def userdevJar = configurations.forgeUserdev.singleFile
+def userdevCfg = zipTree(userdevJar).matching { include 'config.json' }.singleFile
+def userdevJson = new groovy.json.JsonSlurper().parse(userdevCfg)
+userdevJson.libraries.each { String lib ->
+    dependencies.add('compileOnly', lib)
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    disableAutoTargetJvm()
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("META-INF/mods.toml") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    archiveClassifier = ''
+    from project(':common').sourceSets.main.output
+}
+
+if (obfuscated) {
+    remapJar {
+        enabled = false
+    }
+}

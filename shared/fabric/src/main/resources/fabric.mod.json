@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "chatitems",
+  "version": "${version}",
+  "name": "Chat Items",
+  "icon": "assets/chatitems/icon.png",
+  "description": "Type [item], [inv] or [ender] in chat to show items with tooltips and read-only inventory snapshots. Server-side, vanilla clients welcome.",
+  "authors": [
+    "Shamanalle"
+  ],
+  "contact": {
+    "homepage": "https://github.com/Shamanalle/chat-items",
+    "sources": "https://github.com/Shamanalle/chat-items",
+    "issues": "https://github.com/Shamanalle/chat-items/issues"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.kasper.chatitems.ChatItemsFabric"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=${fabricloader}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft}",
+    "java": ">=${java}"
+  }
+}

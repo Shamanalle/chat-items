@@ -1,0 +1,16 @@
+name: ChatItems
+version: '${version}'
+main: com.kasper.chatitems.bukkit.ChatItemsBukkit
+api-version: '1.16'
+folia-supported: true
+author: Shamanalle
+website: https://github.com/Shamanalle/chat-items
+description: Type [item], [inv] or [ender] in chat to show items with tooltips and read-only inventory snapshots.
+commands:
+  chatitems:
+    description: Chat Items settings and read-only snapshot viewer
+    usage: /chatitems [status|enabled|item|inv|ender|max_tokens|cooldown|ttl|reload|help|view <id>]
+permissions:
+  chatitems.admin:
+    description: Configure Chat Items via /chatitems
+    default: op
