@@ -62,7 +62,7 @@ public final class McCompat {
     }
 
     public static void sendSystemMessage(ServerPlayer player, Component message) {
-        player.sendSystemMessage(message);
+        player.displayClientMessage(message, false);
     }
 
     public static void sendCommandLine(CommandSourceStack source, Component line) {
