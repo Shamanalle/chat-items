@@ -1,0 +1,20 @@
+{
+  "description": "Type [item], [inv] or [ender] in chat to show items with tooltips and read-only inventory snapshots. Server-side, vanilla clients welcome. Forge, NeoForge, Fabric, Paper. 1.16.5 - 26.3.",
+  "topics": [
+    "minecraft",
+    "minecraft-mod",
+    "minecraft-plugin",
+    "fabric",
+    "quilt",
+    "neoforge",
+    "forge",
+    "papermc",
+    "spigot",
+    "folia",
+    "server-side",
+    "chat",
+    "inventory",
+    "ender-chest",
+    "item-tooltip"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "chatitems-gametest",
+  "version": "1.0.0",
+  "name": "Chat Items in-game tests",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": [
+      "com.kasper.chatitems.gametest.CommandsGameTest"
+    ]
+  },
+  "depends": {
+    "chatitems": "*",
+    "fabric-client-gametest-api-v1": "*"
+  }
+}

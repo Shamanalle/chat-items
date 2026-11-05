@@ -9,5 +9,6 @@ ext.fabricKey = 'mc12111'
 ext.fabricJava = 21
 ext.fabricMinecraft = '>=1.21.11 <1.21.12'
 ext.fabricRemap = true
+ext.fabricGametest = true
 ext.fabricShared = ['shared/fabric', 'shared/mc-1.21.11-up', 'shared/mc-all']
 apply from: "${rootDir}/gradle/fabric-band.gradle"

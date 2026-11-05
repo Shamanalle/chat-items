@@ -1,0 +1,153 @@
+name: Fabric compatibility
+
+# Checks each Fabric band jar on every Minecraft release in its range, not only the one it is built against:
+# the jar built for gradle.properties links against that version and its latest Fabric API (every class,
+# method, field, override and abstract method it uses resolves the same way via LinkCheck.java).
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'versions/fabric/**'
+      - 'shared/fabric/**'
+      - 'shared/mc-**'
+      - 'common/src/main/**'
+      - 'gradle/fabric-band.gradle'
+      - 'gradle.properties'
+      - '.github/scripts/LinkCheck.java'
+      - '.github/scripts/linkcheck-selftest.sh'
+      - '.github/workflows/compat.yml'
+  pull_request:
+    paths:
+      - 'versions/fabric/**'
+      - 'shared/fabric/**'
+      - 'shared/mc-**'
+      - 'common/src/main/**'
+      - 'gradle/fabric-band.gradle'
+      - 'gradle.properties'
+      - '.github/scripts/LinkCheck.java'
+      - '.github/scripts/linkcheck-selftest.sh'
+      - '.github/workflows/compat.yml'
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  versions:
+    name: List Fabric releases
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.list.outputs.matrix }}
+    steps:
+      - name: Minecraft releases and their Fabric API
+        id: list
+        run: |
+          meta=$(curl -fsSL https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml)
+          entries=()
+          add_band() {
+            local module="$1" dir="$2" key="$3" target="$4" pattern="$5"
+            local releases
+            releases=$(curl -fsSL https://piston-meta.mojang.com/mc/game/version_manifest_v2.json \
+              | jq -r --arg re "${pattern}" '.versions[] | select(.type == "release") | .id | select(test($re))' | sort -V)
+            for mc in ${releases}; do
+              local api
+              api=$(grep -oP "<version>\K[^<]*\+${mc//./\\.}(?=</version>)" <<< "${meta}" | sort -V | tail -1 || true)
+              if [ -z "${api}" ]; then
+                echo "::warning::No Fabric API for Minecraft ${mc}; skipped"
+                continue
+              fi
+              echo "${module}: Minecraft ${mc} -> Fabric API ${api}"
+              entries+=("$(jq -cn \
+                --arg module "${module}" \
+                --arg dir "${dir}" \
+                --arg key "${key}" \
+                --arg target "${target}" \
+                --arg mc "${mc}" \
+                --arg api "${api}" \
+                '{module: $module, dir: $dir, key: $key, target: $target, mc: $mc, api: $api}')")
+            done
+          }
+          add_band "fabric-1.21.10" "versions/fabric/1.21.10" "mc12110" "mc1.21.9-1.21.10" '^1\.21\.(9|10)$'
+          add_band "fabric-1.21.11" "versions/fabric/1.21.11" "mc12111" "mc1.21.11" '^1\.21\.11$'
+          add_band "fabric-26"      "versions/fabric/26"      "mc26"    "mc26.x"    '^26\.'
+          if [ "${#entries[@]}" -eq 0 ]; then
+            echo "::error::No release with a Fabric API found"
+            exit 1
+          fi
+          echo "matrix=$(printf '%s\n' "${entries[@]}" | jq -cs '{include: .}')" >> "$GITHUB_OUTPUT"
+
+  check:
+    name: ${{ matrix.module }} on Minecraft ${{ matrix.mc }}
+    needs: versions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.versions.outputs.matrix) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: LinkCheck self-test
+        run: bash .github/scripts/linkcheck-selftest.sh
+
+      - name: Build the jar for the reference version
+        run: |
+          bash .github/scripts/net-retry.sh -- ./gradlew :${{ matrix.module }}:assemble :${{ matrix.module }}:writeCompileClasspath --no-daemon
+          version=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
+          cp "${{ matrix.dir }}/build/libs/chat-items-fabric-${version}+${{ matrix.target }}.jar" "${RUNNER_TEMP}/mod.jar"
+          cp "${{ matrix.dir }}/build/compile-classpath.txt" "${RUNNER_TEMP}/reference-classpath.txt"
+
+      - name: Classpath of Minecraft ${{ matrix.mc }}
+        run: |
+          bash .github/scripts/net-retry.sh -- ./gradlew :${{ matrix.module }}:writeCompileClasspath --no-daemon \
+            -P${{ matrix.key }}_minecraft=${{ matrix.mc }} -P${{ matrix.key }}_fabric_api=${{ matrix.api }}
+          cp "${{ matrix.dir }}/build/compile-classpath.txt" "${RUNNER_TEMP}/target-classpath.txt"
+
+      - name: Compile the sources against Minecraft ${{ matrix.mc }} (information)
+        id: compile
+        continue-on-error: true
+        run: |
+          ./gradlew :${{ matrix.module }}:compileJava --no-daemon \
+            -P${{ matrix.key }}_minecraft=${{ matrix.mc }} -P${{ matrix.key }}_fabric_api=${{ matrix.api }}
+
+      - name: Check the reference jar links against Minecraft ${{ matrix.mc }}
+        id: link
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          java .github/scripts/LinkCheck.java "${RUNNER_TEMP}/mod.jar" \
+            "${RUNNER_TEMP}/reference-classpath.txt" "${RUNNER_TEMP}/target-classpath.txt" | tee "${RUNNER_TEMP}/link.txt"
+
+      - name: Result
+        env:
+          MC: ${{ matrix.mc }}
+          API: ${{ matrix.api }}
+          COMPILE: ${{ steps.compile.outcome }}
+          LINK: ${{ steps.link.outcome }}
+        run: |
+          {
+            echo "### Minecraft ${MC} (Fabric API ${API})"
+            echo "- Sources compile (information only): **${COMPILE}**"
+            echo "- Reference jar links: **${LINK}**"
+            echo
+            echo '```'
+            tail -200 "${RUNNER_TEMP}/link.txt" 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "${LINK}" = "success" ]
