@@ -3,8 +3,8 @@ plugins {
     id 'java'
 }
 
-// NeoForge, Minecraft 1.21 - 1.21.1 (see gradle/neoforge-band.gradle)
-ext.nfTarget = 'mc1.21-1.21.1'
+// NeoForge, Minecraft 1.21 - 1.21.4 (see gradle/neoforge-band.gradle)
+ext.nfTarget = 'mc1.21-1.21.4'
 ext.nfVersion = 'nf121_neoforge'
 ext.nfShared = ['shared/neoforge', 'shared/mc-1.20.5-1.21.4', 'shared/mc-all']
 apply from: "${rootDir}/gradle/neoforge-band.gradle"

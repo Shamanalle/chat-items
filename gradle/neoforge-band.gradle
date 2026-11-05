@@ -32,14 +32,16 @@ dependencies {
     implementation project(':common')
 }
 
+def bandJava = (project.findProperty('nfJava') ?: 21) as int
+
 tasks.withType(JavaCompile).configureEach {
-    options.release = 21
+    options.release = bandJava
     options.encoding = 'UTF-8'
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.toVersion(bandJava)
+    targetCompatibility = JavaVersion.toVersion(bandJava)
     disableAutoTargetJvm()
 }
 

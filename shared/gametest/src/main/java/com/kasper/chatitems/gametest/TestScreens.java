@@ -109,6 +109,18 @@ final class TestScreens {
         return reload == null || reload.isDone();
     }
 
+    static void clearToasts(Minecraft client) {
+        for (Method getter : client.getClass().getMethods()) {
+            if (getter.getParameterCount() == 0 && getter.getReturnType().getSimpleName().contains("Toast")) {
+                try {
+                    Object toasts = getter.invoke(client);
+                    toasts.getClass().getMethod("clear").invoke(toasts);
+                } catch (ReflectiveOperationException | RuntimeException ignored) {
+                }
+            }
+        }
+    }
+
     /**
      * Builds a stone-brick and bookshelf showcase room around (0, 120, 0), places an ender chest,
      * enchanting table, and lanterns in front of the player, and populates the player's inventory,

@@ -12,6 +12,6 @@ public final class AdminPermission {
     }
 
     public static boolean isAdmin(CommandSourceStack source) {
-        return source.getPlayer() == null || source.hasPermission(2) || source.getServer().isSingleplayer();
+        return McCompat.player(source) == null || source.hasPermission(2) || source.getServer().isSingleplayer();
     }
 }

@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "Chat Items",
+    "pack_format": 15,
+    "supported_formats": [15, 1000]
+  }
+}

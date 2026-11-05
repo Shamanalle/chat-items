@@ -1,0 +1,26 @@
+[
+  {
+    "file": "docs/images/store-chat.png",
+    "title": "[item], [inv] and [ender] in chat",
+    "description": "Type [item], [inv] or [ender] in chat to show your held item with its full tooltip and share clickable inventory or Ender chest links.",
+    "featured": true
+  },
+  {
+    "file": "docs/images/store-inv.png",
+    "title": "Read-only inventory snapshot",
+    "description": "Clicking [inv] in chat opens a read-only 6-row view of the player's armor, off-hand, main inventory, and hotbar.",
+    "featured": false
+  },
+  {
+    "file": "docs/images/store-ender.png",
+    "title": "Read-only Ender chest snapshot",
+    "description": "Clicking [ender] in chat opens a read-only 3-row view of the player's Ender chest.",
+    "featured": false
+  },
+  {
+    "file": "docs/images/store-status.png",
+    "title": "/chatitems status",
+    "description": "/chatitems shows the active tokens, per-message limit, cooldown, snapshot lifetime, and cached snapshots.",
+    "featured": false
+  }
+]

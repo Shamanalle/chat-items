@@ -1,0 +1,55 @@
+plugins {
+    id 'net.neoforged.moddev.legacyforge' version '2.0.147'
+    id 'java'
+}
+
+evaluationDependsOn(':common-j8')
+
+version = "${project.mod_version}+mc1.17.1"
+
+base {
+    archivesName = "chat-items-forge"
+}
+
+repositories {
+    mavenCentral()
+}
+
+legacyForge {
+    version = project.findProperty("loaderOverride.${project.name}") ?: project.forge117_version
+}
+
+apply from: "${rootDir}/gradle/shared-sources.gradle"
+useShared(['shared/forge-1.18', 'shared/mc-1.18', 'shared/mc-1.17', 'shared/mc-1.20.1', 'shared/mc-all'])
+
+dependencies {
+    implementation project(':common-j8')
+}
+
+apply from: "${rootDir}/gradle/jabel.gradle"
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 16
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_16
+    targetCompatibility = JavaVersion.VERSION_16
+}
+
+configurations.configureEach {
+    if (canBeResolved && !canBeConsumed) {
+        attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 16)
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("META-INF/mods.toml") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from project(':common-j8').sourceSets.main.output
+}

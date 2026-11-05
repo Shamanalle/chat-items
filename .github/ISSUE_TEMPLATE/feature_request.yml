@@ -1,0 +1,11 @@
+name: Feature request / Предложение
+description: Suggest an improvement or idea / Предложить улучшение или идею
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like to see? / Что бы вы хотели добавить или изменить?
+    validations:
+      required: true

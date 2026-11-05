@@ -1,0 +1,45 @@
+name: Bug report / Сообщение об ошибке
+description: Something does not work as expected / Что-то работает не так, как должно
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: input
+    id: minecraft
+    attributes:
+      label: Minecraft version / Версия Minecraft
+      placeholder: "1.21.11 / 26.3 / 1.20.1 / 1.16.5"
+    validations:
+      required: true
+  - type: dropdown
+    id: loader
+    attributes:
+      label: Loader / Загрузчик
+      options:
+        - Fabric
+        - Quilt
+        - NeoForge
+        - Forge
+        - Paper / Purpur
+        - Folia
+        - Spigot / Bukkit
+    validations:
+      required: true
+  - type: input
+    id: mod_version
+    attributes:
+      label: Mod or plugin version / Версия мода или плагина
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened? / Что произошло?
+      description: Describe the issue and how to reproduce it / Опишите проблему и шаги для воспроизведения
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Логи (logs/latest.log)
+      render: text

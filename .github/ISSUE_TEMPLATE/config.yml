@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: README (English)
+    url: https://github.com/Shamanalle/chat-items#readme
+    about: Commands, settings, and supported versions
+  - name: README (Русский)
+    url: https://github.com/Shamanalle/chat-items/blob/main/README.ru.md
+    about: Команды, настройки и поддерживаемые версии

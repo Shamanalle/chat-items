@@ -1,5 +1,5 @@
 modLoader = "javafml"
-loaderVersion = "[1,)"
+loaderVersion = "[4,)"
 license = "MIT"
 issueTrackerURL = "https://github.com/Shamanalle/chat-items/issues"
 
@@ -9,26 +9,21 @@ version = "${version}"
 displayName = "Chat Items"
 displayURL = "https://github.com/Shamanalle/chat-items"
 logoFile = "assets/chatitems/icon.png"
-authors = "Shamanalle"
-displayTest = "IGNORE_ALL_VERSION"
+authors = "Kasper"
 description = '''
 Type [item], [inv] or [ender] in chat to show items with tooltips and read-only inventory snapshots. Server-side, vanilla clients welcome.
-
-Пишите [item], [inv] или [ender] в чате, чтобы показать предмет с тултипом и снимок инвентаря или эндер-сундука только для чтения. Работает на сервере, ванильным клиентам мод не нужен.
 '''
 
 [[dependencies.chatitems]]
 modId = "neoforge"
 type = "required"
-mandatory = true
-versionRange = "[21.9,)"
+versionRange = "[21.5,)"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.chatitems]]
 modId = "minecraft"
 type = "required"
-mandatory = true
-versionRange = "[1.21.9,1.21.11)"
+versionRange = "[1.21.5,1.21.11)"
 ordering = "NONE"
 side = "BOTH"

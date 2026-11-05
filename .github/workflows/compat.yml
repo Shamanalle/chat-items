@@ -9,7 +9,7 @@ on:
     branches: [ "main" ]
     paths:
       - 'versions/fabric/**'
-      - 'shared/fabric/**'
+      - 'shared/fabric*/**'
       - 'shared/mc-**'
       - 'common/src/main/**'
       - 'gradle/fabric-band.gradle'
@@ -20,7 +20,7 @@ on:
   pull_request:
     paths:
       - 'versions/fabric/**'
-      - 'shared/fabric/**'
+      - 'shared/fabric*/**'
       - 'shared/mc-**'
       - 'common/src/main/**'
       - 'gradle/fabric-band.gradle'
@@ -45,21 +45,42 @@ jobs:
       - name: Minecraft releases and their Fabric API
         id: list
         run: |
+          bands='fabric-1.16 mc116 mc1.16.5 1.16.5 1.16.5
+          fabric-1.17 mc117 mc1.17.1 1.17.1 1.17.1
+          fabric-1.18 mc118 mc1.18.2 1.18.2 1.18.2
+          fabric-1.19 mc119 mc1.19.2 1.19 1.19.2
+          fabric-1.19.4 mc1194 mc1.19.4 1.19.3 1.19.4
+          fabric-1.20 mc120 mc1.20-1.20.2 1.20 1.20.2
+          fabric-1.20.4 mc1204 mc1.20.3-1.20.4 1.20.3 1.20.4
+          fabric-1.20.6 mc1206 mc1.20.5-1.20.6 1.20.5 1.20.6
+          fabric-1.21 mc121 mc1.21-1.21.4 1.21 1.21.4
+          fabric-1.21.10 mc12110 mc1.21.5-1.21.10 1.21.5 1.21.10
+          fabric-1.21.11 mc12111 mc1.21.11 1.21.11 1.21.11
+          fabric-26 mc26 mc26.x 26 -'
+          releases=$(curl -fsSL https://piston-meta.mojang.com/mc/game/version_manifest_v2.json \
+            | jq -r '.versions[] | select(.type == "release") | .id' | sort -V)
           meta=$(curl -fsSL https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml)
+          le() { [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" = "$1" ]; }
           entries=()
-          add_band() {
-            local module="$1" dir="$2" key="$3" target="$4" pattern="$5"
-            local releases
-            releases=$(curl -fsSL https://piston-meta.mojang.com/mc/game/version_manifest_v2.json \
-              | jq -r --arg re "${pattern}" '.versions[] | select(.type == "release") | .id | select(test($re))' | sort -V)
+          while read -r module key target first last; do
+            dir="versions/fabric/${module#fabric-}"
+            found=0
             for mc in ${releases}; do
-              local api
+              le "${first}" "${mc}" || continue
+              if [ "${last}" != "-" ]; then
+                le "${mc}" "${last}" || continue
+              fi
               api=$(grep -oP "<version>\K[^<]*\+${mc//./\\.}(?=</version>)" <<< "${meta}" | sort -V | tail -1 || true)
+              if [ -z "${api}" ] && [ "${mc}" != "${mc%.*.*}" ]; then
+                minor=${mc%.*}
+                api=$(grep -oP "<version>\K[^<]*\+${minor//./\\.}(?=</version>)" <<< "${meta}" | sort -V | tail -1 || true)
+              fi
               if [ -z "${api}" ]; then
                 echo "::warning::No Fabric API for Minecraft ${mc}; skipped"
                 continue
               fi
               echo "${module}: Minecraft ${mc} -> Fabric API ${api}"
+              found=1
               entries+=("$(jq -cn \
                 --arg module "${module}" \
                 --arg dir "${dir}" \
@@ -69,14 +90,11 @@ jobs:
                 --arg api "${api}" \
                 '{module: $module, dir: $dir, key: $key, target: $target, mc: $mc, api: $api}')")
             done
-          }
-          add_band "fabric-1.21.10" "versions/fabric/1.21.10" "mc12110" "mc1.21.9-1.21.10" '^1\.21\.(9|10)$'
-          add_band "fabric-1.21.11" "versions/fabric/1.21.11" "mc12111" "mc1.21.11" '^1\.21\.11$'
-          add_band "fabric-26"      "versions/fabric/26"      "mc26"    "mc26.x"    '^26\.'
-          if [ "${#entries[@]}" -eq 0 ]; then
-            echo "::error::No release with a Fabric API found"
-            exit 1
-          fi
+            if [ "${found}" -eq 0 ]; then
+              echo "::error::No release of ${module} with a Fabric API found"
+              exit 1
+            fi
+          done <<< "${bands}"
           echo "matrix=$(printf '%s\n' "${entries[@]}" | jq -cs '{include: .}')" >> "$GITHUB_OUTPUT"
 
   check:
@@ -91,11 +109,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 25
+      - name: Set up JDK 17 and 25
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '25'
+          java-version: |
+            17
+            25
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4

@@ -1,0 +1,113 @@
+plugins {
+    id 'java'
+    id 'dev.architectury.loom' version '1.10.455'
+}
+
+// Forge 1.16.5: built with Architectury Loom on Gradle 8 and Jabel (Java 17 syntax -> Java 8 bytecode).
+def repoRoot = file('../../..')
+def props = new Properties()
+new File(repoRoot, 'gradle.properties').withInputStream { props.load(it) }
+
+def forgeVersion = project.findProperty('loaderOverride') ?: props.getProperty('forge1165_version')
+def minecraftVersion = forgeVersion.substring(0, forgeVersion.indexOf('-'))
+def modVersion = props.getProperty('mod_version')
+
+version = "${modVersion}+mc1.16.5"
+group = props.getProperty('maven_group')
+
+base {
+    archivesName = 'chat-items-forge'
+}
+
+loom {
+    silentMojangMappingsLicense()
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    jabel
+}
+
+def ownRoot = file('src/main/java')
+def sharedRoots = [
+        "${repoRoot}/shared/forge-1.16/src/main/java",
+        "${repoRoot}/shared/mc-1.16/src/main/java",
+        "${repoRoot}/shared/mc-1.17/src/main/java",
+        "${repoRoot}/shared/mc-1.20.1/src/main/java",
+        "${repoRoot}/shared/mc-all/src/main/java",
+        "${repoRoot}/common/src/main/java",
+].collect { new File(it) }
+def fabricOnly = [
+        'com/kasper/chatitems/ChatItemsFabric.java',
+]
+
+sourceSets {
+    main {
+        java {
+            sharedRoots.each { srcDir it }
+            exclude { FileTreeElement e ->
+                if (e.directory) {
+                    return false
+                }
+                def path = e.relativePath.pathString
+                def index = sharedRoots.findIndexOf { e.file.path.startsWith(it.path + File.separator) }
+                if (index < 0) {
+                    return false
+                }
+                def before = [ownRoot] + sharedRoots.take(index)
+                fabricOnly.contains(path) || before.any { new File(it, path).exists() }
+            }
+        }
+        resources {
+            srcDir "${repoRoot}/common/src/main/resources"
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraftVersion}"
+    mappings loom.officialMojangMappings()
+    forge "net.minecraftforge:forge:${forgeVersion}"
+    compileOnly 'org.apache.logging.log4j:log4j-api:2.17.1'
+    compileOnly "org.slf4j:slf4j-api:${props.getProperty('slf4j_version')}"
+
+    jabel 'com.github.bsideup.jabel:jabel-javac-plugin:1.0.0'
+    jabel 'net.bytebuddy:byte-buddy-agent:1.15.10'
+    jabel 'net.bytebuddy:byte-buddy:1.15.10'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 8
+    options.encoding = 'UTF-8'
+    options.fork = true
+    def jvm = ['-Djdk.attach.allowAttachSelf=true']
+    ['comp', 'parser', 'util', 'code', 'tree', 'main', 'file', 'api'].each {
+        jvm << "--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString()
+        jvm << "--add-opens=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString()
+    }
+    options.forkOptions.jvmArgs = jvm
+    options.annotationProcessorPath = configurations.jabel
+    options.compilerArgs += ['-Xplugin:jabel']
+}
+
+processResources {
+    inputs.property 'version', version
+    filesMatching('META-INF/mods.toml') {
+        expand 'version': version
+    }
+    filesMatching('chatitems-build.properties') {
+        expand 'version': modVersion
+    }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+remapJar {
+    archiveClassifier = ''
+}

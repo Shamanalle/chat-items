@@ -52,12 +52,14 @@ public class CommandsGameTest implements FabricClientGameTest {
             // Build the showcase hall and populate the player's inventory, armor, offhand, and ender chest
             context.runOnClient(TestScreens::setupShowcaseScene);
             context.waitTicks(20);
+            context.getInput().resizeWindow(STORE_WIDTH, STORE_HEIGHT);
             context.runOnClient(client -> TestScreens.guiScale(client, STORE_GUI_SCALE));
             context.waitTicks(5);
 
             // Disable cooldown temporarily so two showcase chat messages can be sent back-to-back
             context.runOnClient(client -> TestScreens.command(client, "chatitems cooldown 0"));
             context.waitTicks(10);
+            context.runOnClient(TestScreens::clearToasts);
             context.runOnClient(TestScreens::clearChat);
             RECEIVED.clear();
 
@@ -68,6 +70,7 @@ public class CommandsGameTest implements FabricClientGameTest {
             context.waitTicks(15);
 
             TestScreens.verifyChatAndSnapshots(RECEIVED);
+            context.runOnClient(TestScreens::clearToasts);
             storeShot(context, "store-chat");
 
             // Open the read-only inventory snapshot, verify read-only protection, and capture 4K store-inv
@@ -75,6 +78,7 @@ public class CommandsGameTest implements FabricClientGameTest {
             context.runOnClient(client -> TestScreens.command(client, "chatitems view " + invId));
             context.waitTicks(15);
             context.runOnClient(TestScreens::verifyInventorySnapshotMenu);
+            context.getInput().setCursorPos(1560, 925);
             context.waitTicks(5);
             storeShot(context, "store-inv");
             context.runOnClient(TestScreens::closeContainer);
@@ -85,6 +89,7 @@ public class CommandsGameTest implements FabricClientGameTest {
             context.runOnClient(client -> TestScreens.command(client, "chatitems view " + enderId));
             context.waitTicks(15);
             context.runOnClient(TestScreens::verifyEnderSnapshotMenu);
+            context.getInput().setCursorPos(1650, 790);
             context.waitTicks(5);
             storeShot(context, "store-ender");
             context.runOnClient(TestScreens::closeContainer);
@@ -98,6 +103,7 @@ public class CommandsGameTest implements FabricClientGameTest {
             context.waitTicks(10);
             storeShot(context, "store-status");
 
+            context.getInput().resizeWindow(854, 480);
             context.runOnClient(client -> TestScreens.guiScale(client, 0));
             context.waitTicks(5);
 
