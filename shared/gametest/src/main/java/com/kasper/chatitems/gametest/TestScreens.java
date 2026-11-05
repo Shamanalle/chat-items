@@ -195,19 +195,27 @@ final class TestScreens {
         player.containerMenu.broadcastChanges();
     }
 
+    static String latestSnapshotId(SnapshotType type) {
+        InventorySnapshot<ItemStack> s = ChatItemsServer.cache().latestOfType(type, System.currentTimeMillis());
+        if (s == null) {
+            throw new AssertionError("No active snapshot of type " + type);
+        }
+        return s.id();
+    }
+
     static void verifyChatAndSnapshots(List<String> received) {
         long now = System.currentTimeMillis();
         int active = ChatItemsServer.cache().activeCount(now);
         if (active < 2) {
             throw new AssertionError("Expected at least 2 active snapshots in ChatItemsServer.cache(), got " + active);
         }
-        InventorySnapshot<ItemStack> inv = ChatItemsServer.cache().get("1", now);
-        InventorySnapshot<ItemStack> ender = ChatItemsServer.cache().get("2", now);
+        InventorySnapshot<ItemStack> inv = ChatItemsServer.cache().latestOfType(SnapshotType.INV, now);
+        InventorySnapshot<ItemStack> ender = ChatItemsServer.cache().latestOfType(SnapshotType.ENDER, now);
         if (inv == null || inv.type() != SnapshotType.INV) {
-            throw new AssertionError("Expected snapshot #1 to be INV, got " + inv);
+            throw new AssertionError("Expected INV snapshot in cache, got " + inv);
         }
         if (ender == null || ender.type() != SnapshotType.ENDER) {
-            throw new AssertionError("Expected snapshot #2 to be ENDER, got " + ender);
+            throw new AssertionError("Expected ENDER snapshot in cache, got " + ender);
         }
         String joined = String.join("\n", received);
         if (!joined.contains("[Dragonbane]")) {

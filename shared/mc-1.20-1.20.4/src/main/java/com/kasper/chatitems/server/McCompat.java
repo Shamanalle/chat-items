@@ -67,4 +67,8 @@ public final class McCompat {
     public static void sendCommandLine(CommandSourceStack source, Component line) {
         source.sendSuccess(() -> line, false);
     }
+
+    public static ServerPlayer player(CommandSourceStack source) {
+        return source.getPlayer();
+    }
 }

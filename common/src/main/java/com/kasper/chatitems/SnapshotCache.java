@@ -96,6 +96,20 @@ public final class SnapshotCache<S> {
         return entries.size();
     }
 
+    /**
+     * Returns the most recently stored non-expired snapshot of {@code type}, or {@code null} if none.
+     */
+    public synchronized InventorySnapshot<S> latestOfType(SnapshotType type, long nowMillis) {
+        pruneExpiredLocked(nowMillis);
+        InventorySnapshot<S> latest = null;
+        for (InventorySnapshot<S> s : entries.values()) {
+            if (s.type() == type) {
+                latest = s;
+            }
+        }
+        return latest;
+    }
+
     public synchronized void clear() {
         entries.clear();
     }

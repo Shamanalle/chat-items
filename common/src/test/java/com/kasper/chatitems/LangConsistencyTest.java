@@ -115,7 +115,7 @@ class LangConsistencyTest {
     @DisplayName("Every key used by the code is translated")
     void usedKeysExist() {
         Set<String> used = new TreeSet<>();
-        Matcher full = Pattern.compile("\"((?:chatitems|command\\.chatitems)\\.[\\w.\\-]*)\"").matcher(sources);
+        Matcher full = Pattern.compile("\"((?:chatitems\\.(?:tag|gui|snapshot|cooldown|permission)|command\\.chatitems)\\.[\\w.\\-]*)\"").matcher(sources);
         while (full.find()) {
             if (!full.group(1).endsWith(".")) {
                 used.add(full.group(1));

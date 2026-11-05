@@ -41,7 +41,7 @@ public final class ChatItemsCommand {
         String trimmed = args == null ? "" : args.trim();
         String[] parts = Jv.isBlank(trimmed) ? new String[0] : trimmed.split("\\s+");
         if (parts.length >= 2 && parts[0].equalsIgnoreCase("view")) {
-            ServerPlayer player = source.getPlayer();
+            ServerPlayer player = McCompat.player(source);
             if (player == null) {
                 return 0;
             }
@@ -50,7 +50,7 @@ public final class ChatItemsCommand {
         String sub = parts.length == 0 ? "status" : parts[0].toLowerCase(Locale.ROOT);
         boolean readOnlySub = sub.equals("status") || sub.equals("help");
         if (!readOnlySub && !AdminPermission.isAdmin(source)) {
-            String lang = ChatItemsServer.languageOf(source.getPlayer());
+            String lang = ChatItemsServer.languageOf(McCompat.player(source));
             Component denied = McCompat.literal(ServerText.translate(lang, "chatitems.permission.denied"))
                     .withStyle(ChatFormatting.RED);
             McCompat.sendCommandLine(source, denied);
@@ -75,7 +75,7 @@ public final class ChatItemsCommand {
     }
 
     private static AdminCommands.Context context(CommandSourceStack source) {
-        String language = ChatItemsServer.languageOf(source.getPlayer());
+        String language = ChatItemsServer.languageOf(McCompat.player(source));
         int active = ChatItemsServer.cache().activeCount(System.currentTimeMillis());
         return new AdminCommands.Context() {
             @Override

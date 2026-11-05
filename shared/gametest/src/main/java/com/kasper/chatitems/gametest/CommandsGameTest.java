@@ -1,5 +1,6 @@
 package com.kasper.chatitems.gametest;
 
+import com.kasper.chatitems.SnapshotType;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -69,8 +70,9 @@ public class CommandsGameTest implements FabricClientGameTest {
             TestScreens.verifyChatAndSnapshots(RECEIVED);
             storeShot(context, "store-chat");
 
-            // Open the read-only inventory snapshot (#1), verify read-only protection, and capture 4K store-inv
-            context.runOnClient(client -> TestScreens.command(client, "chatitems view 1"));
+            // Open the read-only inventory snapshot, verify read-only protection, and capture 4K store-inv
+            String invId = TestScreens.latestSnapshotId(SnapshotType.INV);
+            context.runOnClient(client -> TestScreens.command(client, "chatitems view " + invId));
             context.waitTicks(15);
             context.runOnClient(TestScreens::verifyInventorySnapshotMenu);
             context.waitTicks(5);
@@ -78,8 +80,9 @@ public class CommandsGameTest implements FabricClientGameTest {
             context.runOnClient(TestScreens::closeContainer);
             context.waitTicks(10);
 
-            // Open the read-only ender chest snapshot (#2), verify read-only protection, and capture 4K store-ender
-            context.runOnClient(client -> TestScreens.command(client, "chatitems view 2"));
+            // Open the read-only ender chest snapshot, verify read-only protection, and capture 4K store-ender
+            String enderId = TestScreens.latestSnapshotId(SnapshotType.ENDER);
+            context.runOnClient(client -> TestScreens.command(client, "chatitems view " + enderId));
             context.waitTicks(15);
             context.runOnClient(TestScreens::verifyEnderSnapshotMenu);
             context.waitTicks(5);
