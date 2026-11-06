@@ -63,8 +63,10 @@ public class CommandsGameTest implements FabricClientGameTest {
             context.runOnClient(TestScreens::clearChat);
             RECEIVED.clear();
 
-            // Send chat messages with [item], [inv], and [ender]
+            // Send chat messages with [item], [inv], [ender], [armor], [offhand], and [slot4]
             context.runOnClient(client -> TestScreens.chat(client, "Ready for the End with [item]!"));
+            context.waitTicks(15);
+            context.runOnClient(client -> TestScreens.chat(client, "Wearing [armor] with [offhand] and [slot4]"));
             context.waitTicks(15);
             context.runOnClient(client -> TestScreens.chat(client, "Full gear in [inv] and spare loot in [ender]"));
             context.waitTicks(15);
@@ -89,12 +91,15 @@ public class CommandsGameTest implements FabricClientGameTest {
             context.runOnClient(client -> TestScreens.command(client, "chatitems view " + enderId));
             context.waitTicks(15);
             context.runOnClient(TestScreens::verifyEnderSnapshotMenu);
-            context.getInput().setCursorPos(1650, 790);
+            context.getInput().setCursorPos(1740, 880);
             context.waitTicks(5);
             storeShot(context, "store-ender");
             context.runOnClient(client -> TestScreens.command(client, "chatitems view " + enderId + " 10"));
             context.waitTicks(15);
             context.runOnClient(TestScreens::verifyShulkerSubMenu);
+            context.getInput().setCursorPos(1830, 745);
+            context.waitTicks(5);
+            storeShot(context, "store-shulker");
             context.runOnClient(TestScreens::closeContainer);
             context.waitTicks(10);
 

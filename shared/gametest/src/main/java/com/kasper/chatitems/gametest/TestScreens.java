@@ -205,9 +205,17 @@ final class TestScreens {
         player.getEnderChestInventory().setItem(8, new ItemStack(Items.TRIDENT));
         player.getEnderChestInventory().setItem(9, new ItemStack(Items.TOTEM_OF_UNDYING));
         ItemStack shulker = new ItemStack(Items.SHULKER_BOX);
+        shulker.set(DataComponents.CUSTOM_NAME, Component.literal("Expedition Kit"));
         shulker.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(List.of(
                 new ItemStack(Items.NETHERITE_SCRAP, 16),
-                new ItemStack(Items.ECHO_SHARD, 8)
+                new ItemStack(Items.ECHO_SHARD, 8),
+                new ItemStack(Items.ELYTRA),
+                new ItemStack(Items.ENCHANTED_GOLDEN_APPLE, 12),
+                new ItemStack(Items.TOTEM_OF_UNDYING),
+                new ItemStack(Items.FIREWORK_ROCKET, 64),
+                new ItemStack(Items.ENDER_PEARL, 16),
+                new ItemStack(Items.DIAMOND_BLOCK, 16),
+                new ItemStack(Items.NETHER_STAR, 2)
         )));
         player.getEnderChestInventory().setItem(10, shulker);
 
