@@ -10,7 +10,6 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.BlockItem;
@@ -81,7 +80,7 @@ public final class McCompat {
     }
 
     public static void runOnServer(ServerPlayer player, Runnable task) {
-        MinecraftServer server = ((Entity) player).level().getServer();
+        MinecraftServer server = player.createCommandSourceStack().getServer();
         if (server != null) {
             server.execute(task);
         }
