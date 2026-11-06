@@ -45,6 +45,14 @@ public final class ChatItemsCommand {
             if (player == null) {
                 return 0;
             }
+            if (parts.length >= 3) {
+                try {
+                    int slot = Integer.parseInt(parts[2]);
+                    return ChatItemsServer.openShulkerSlot(player, parts[1], slot) ? 1 : 0;
+                } catch (NumberFormatException ignored) {
+                    return 0;
+                }
+            }
             return ChatItemsServer.openSnapshot(player, parts[1]) ? 1 : 0;
         }
         String sub = parts.length == 0 ? "status" : parts[0].toLowerCase(Locale.ROOT);

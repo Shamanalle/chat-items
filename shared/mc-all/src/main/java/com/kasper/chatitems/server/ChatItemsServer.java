@@ -17,6 +17,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
@@ -80,20 +81,19 @@ public final class ChatItemsServer {
                     out.append(McCompat.literal(seg.text()));
                     continue;
                 }
-                switch (seg.tokenType()) {
-                    case ITEM:
-                        out.append(formatHeldItem(sender, lang));
-                        break;
-                    case INV:
-                        if (invSnapshot != null) {
-                            out.append(formatSnapshotTag(invSnapshot, lang));
-                        }
-                        break;
-                    case ENDER:
-                        if (enderSnapshot != null) {
-                            out.append(formatSnapshotTag(enderSnapshot, lang));
-                        }
-                        break;
+                TokenType type = seg.tokenType();
+                if (type == TokenType.ITEM) {
+                    out.append(formatHeldItem(sender, lang, now, settings.snapshotTtlSeconds()));
+                } else if (type == TokenType.OFFHAND) {
+                    out.append(formatOffhandItem(sender, lang, now, settings.snapshotTtlSeconds()));
+                } else if (type == TokenType.ARMOR) {
+                    out.append(formatArmor(sender, lang, now, settings.snapshotTtlSeconds()));
+                } else if (type.hotbarIndex() >= 0) {
+                    out.append(formatHotbarSlot(sender, type.hotbarIndex(), lang, now, settings.snapshotTtlSeconds()));
+                } else if (type == TokenType.INV && invSnapshot != null) {
+                    out.append(formatSnapshotTag(invSnapshot, lang));
+                } else if (type == TokenType.ENDER && enderSnapshot != null) {
+                    out.append(formatSnapshotTag(enderSnapshot, lang));
                 }
             }
             return out;
@@ -103,23 +103,82 @@ public final class ChatItemsServer {
         }
     }
 
-    private static MutableComponent formatHeldItem(ServerPlayer sender, String lang) {
+    private static MutableComponent formatHeldItem(ServerPlayer sender, String lang, long now, int ttlSeconds) {
         ItemStack held = sender.getMainHandItem();
         if (held == null || held.isEmpty()) {
             held = sender.getOffhandItem();
         }
-        if (held == null || held.isEmpty()) {
-            Component hover = McCompat.literal(ServerText.translate(lang, "chatitems.tag.empty_hand.hover"))
+        return formatItemStack(
+                sender, held, "chatitems.tag.empty_hand", "chatitems.tag.empty_hand.hover", lang, now, ttlSeconds);
+    }
+
+    private static MutableComponent formatOffhandItem(ServerPlayer sender, String lang, long now, int ttlSeconds) {
+        return formatItemStack(
+                sender, sender.getOffhandItem(), "chatitems.tag.empty_slot", "chatitems.tag.empty_slot.hover", lang, now, ttlSeconds);
+    }
+
+    private static MutableComponent formatHotbarSlot(ServerPlayer sender, int hotbarIndex, String lang, long now, int ttlSeconds) {
+        ItemStack stack = McCompat.getInventoryItem(sender, hotbarIndex);
+        return formatItemStack(
+                sender, stack, "chatitems.tag.empty_slot", "chatitems.tag.empty_slot.hover", lang, now, ttlSeconds);
+    }
+
+    private static MutableComponent formatArmor(ServerPlayer sender, String lang, long now, int ttlSeconds) {
+        EquipmentSlot[] armorOrder = {
+                EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
+        };
+        MutableComponent out = McCompat.empty();
+        boolean any = false;
+        for (EquipmentSlot slot : armorOrder) {
+            ItemStack piece = sender.getItemBySlot(slot);
+            if (piece != null && !piece.isEmpty()) {
+                if (any) {
+                    out.append(McCompat.literal(" "));
+                }
+                out.append(formatItemStack(
+                        sender, piece, "chatitems.tag.empty_slot", "chatitems.tag.empty_slot.hover", lang, now, ttlSeconds));
+                any = true;
+            }
+        }
+        if (!any) {
+            Component hover = McCompat.literal(ServerText.translate(lang, "chatitems.tag.empty_armor.hover"))
                     .withStyle(ChatFormatting.GRAY);
-            return McCompat.literal(ServerText.translate(lang, "chatitems.tag.empty_hand"))
+            return McCompat.literal(ServerText.translate(lang, "chatitems.tag.empty_armor"))
                     .withStyle(style -> style.withColor(ChatFormatting.GRAY)
                             .withHoverEvent(McCompat.hoverText(hover)));
         }
-        ItemStack copy = held.copy();
+        return out;
+    }
+
+    private static MutableComponent formatItemStack(
+            ServerPlayer sender,
+            ItemStack stack,
+            String emptyKey,
+            String emptyHoverKey,
+            String lang,
+            long now,
+            int ttlSeconds
+    ) {
+        if (stack == null || stack.isEmpty()) {
+            Component hover = McCompat.literal(ServerText.translate(lang, emptyHoverKey))
+                    .withStyle(ChatFormatting.GRAY);
+            return McCompat.literal(ServerText.translate(lang, emptyKey))
+                    .withStyle(style -> style.withColor(ChatFormatting.GRAY)
+                            .withHoverEvent(McCompat.hoverText(hover)));
+        }
+        ItemStack copy = stack.copy();
         ChatFormatting rarityColor = McCompat.rarityColor(copy);
         MutableComponent tag = McCompat.literal("[")
                 .append(copy.getHoverName().copy())
                 .append(McCompat.literal(ChatItems.countSuffix(copy.getCount()) + "]"));
+        List<ItemStack> shulkerContents = McCompat.shulkerItems(copy);
+        if (shulkerContents != null) {
+            InventorySnapshot<ItemStack> shulkerSnapshot = CACHE.storeShulker(
+                    sender.getUUID(), copy.getHoverName().getString(), shulkerContents, now, ttlSeconds);
+            return tag.withStyle(style -> style.withColor(rarityColor)
+                    .withHoverEvent(McCompat.hoverItem(copy))
+                    .withClickEvent(McCompat.clickRunCommand(ChatItems.VIEW_COMMAND_PREFIX + shulkerSnapshot.id())));
+        }
         return tag.withStyle(style -> style.withColor(rarityColor)
                 .withHoverEvent(McCompat.hoverItem(copy)));
     }
@@ -195,12 +254,88 @@ public final class ChatItemsServer {
             ItemStack stack = slots.get(i);
             container.setItem(i, stack == null || stack.isEmpty() ? ItemStack.EMPTY : stack.copy());
         }
-        String titleKey = snapshot.type() == SnapshotType.INV ? "chatitems.gui.inv.title" : "chatitems.gui.ender.title";
+        String titleKey = snapshot.type() == SnapshotType.INV
+                ? "chatitems.gui.inv.title"
+                : snapshot.type() == SnapshotType.ENDER
+                ? "chatitems.gui.ender.title"
+                : "chatitems.gui.shulker.title";
         Component title = McCompat.literal(ServerText.translate(lang, titleKey, snapshot.ownerName()));
+        String id = snapshot.id();
         viewer.openMenu(new SimpleMenuProvider(
-                (syncId, playerInv, p) -> new ReadOnlyChestMenu(syncId, playerInv, container, rows),
+                (syncId, playerInv, p) -> new ReadOnlyChestMenu(syncId, playerInv, container, rows, id, null),
                 title));
         return true;
+    }
+
+    /**
+     * Opens a 4-row read-only shulker box view for the shulker in {@code chestSlot} of {@code parentSnapshotId},
+     * with a Back button in slot {@link InventorySnapshot#SHULKER_BACK_SLOT} that returns to the parent snapshot.
+     */
+    public static boolean openShulkerSlot(ServerPlayer viewer, String parentSnapshotId, int chestSlot) {
+        if (viewer == null) {
+            return false;
+        }
+        String lang = languageOf(viewer);
+        InventorySnapshot<ItemStack> parent = CACHE.get(parentSnapshotId, System.currentTimeMillis());
+        if (parent == null) {
+            MutableComponent expired = McCompat.literal(ServerText.translate(lang, "chatitems.snapshot.expired"))
+                    .withStyle(ChatFormatting.RED);
+            McCompat.sendSystemMessage(viewer, expired);
+            return false;
+        }
+        ItemStack pane = McCompat.separatorPane();
+        List<ItemStack> parentSlots = parent.toChestSlots(ItemStack.EMPTY, pane);
+        if (chestSlot < 0 || chestSlot >= parentSlots.size()) {
+            return false;
+        }
+        ItemStack shulkerStack = parentSlots.get(chestSlot);
+        List<ItemStack> shulkerItems = McCompat.shulkerItems(shulkerStack);
+        if (shulkerItems == null) {
+            return false;
+        }
+        ItemStack back = McCompat.backButton(ServerText.translate(lang, "chatitems.gui.shulker.back", parent.ownerName()));
+        List<ItemStack> viewSlots = InventorySnapshot.toShulkerWithBackSlots(shulkerItems, ItemStack.EMPTY, pane, back);
+        SimpleContainer container = new SimpleContainer(InventorySnapshot.SHULKER_WITH_BACK_SIZE);
+        for (int i = 0; i < InventorySnapshot.SHULKER_WITH_BACK_SIZE && i < viewSlots.size(); i++) {
+            ItemStack item = viewSlots.get(i);
+            container.setItem(i, item == null || item.isEmpty() ? ItemStack.EMPTY : item.copy());
+        }
+        Component title = McCompat.literal(
+                ServerText.translate(lang, "chatitems.gui.shulker.title", shulkerStack.getHoverName().getString()));
+        String pid = parent.id();
+        viewer.openMenu(new SimpleMenuProvider(
+                (syncId, playerInv, p) -> new ReadOnlyChestMenu(
+                        syncId, playerInv, container, InventorySnapshot.SHULKER_WITH_BACK_ROWS, pid, pid),
+                title));
+        return true;
+    }
+
+    /**
+     * Handles clicks inside a {@link ReadOnlyChestMenu}: clicking a shulker box inside an {@code [inv]} or
+     * {@code [ender]} snapshot opens its contents, and clicking the Back arrow returns to the parent snapshot.
+     */
+    public static void onMenuClick(Player player, String snapshotId, String parentSnapshotId, int slotId) {
+        if (!(player instanceof ServerPlayer) || slotId < 0) {
+            return;
+        }
+        ServerPlayer viewer = (ServerPlayer) player;
+        if (parentSnapshotId != null) {
+            if (slotId == InventorySnapshot.SHULKER_BACK_SLOT) {
+                McCompat.runOnServer(viewer, () -> openSnapshot(viewer, parentSnapshotId));
+            }
+            return;
+        }
+        if (snapshotId == null) {
+            return;
+        }
+        InventorySnapshot<ItemStack> snapshot = CACHE.get(snapshotId, System.currentTimeMillis());
+        if (snapshot == null || (snapshot.type() != SnapshotType.INV && snapshot.type() != SnapshotType.ENDER)) {
+            return;
+        }
+        List<ItemStack> slots = snapshot.toChestSlots(ItemStack.EMPTY, ItemStack.EMPTY);
+        if (slotId < slots.size() && McCompat.shulkerItems(slots.get(slotId)) != null) {
+            McCompat.runOnServer(viewer, () -> openShulkerSlot(viewer, snapshotId, slotId));
+        }
     }
 
     public static String languageOf(ServerPlayer player) {

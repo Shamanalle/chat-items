@@ -5,9 +5,12 @@ import com.github.bsideup.jabel.Desugar;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * Parses chat messages for {@code [item]} (aliases {@code [i]}, {@code [hand]}),
+ * {@code [offhand]} (alias {@code [off]}), {@code [armor]} (alias {@code [armour]}),
+ * {@code [slot1]}..{@code [slot9]} (aliases {@code [s1]}..{@code [s9]}),
  * {@code [inv]} (alias {@code [inventory]}), and {@code [ender]} (aliases {@code [enderchest]}, {@code [ec]}).
  * <p>
  * Supports backslash escaping ({@code \[item]} becomes literal {@code [item]}), respects per-token
@@ -57,6 +60,13 @@ public final class ChatTokens {
      * Parses {@code message} according to {@code settings}.
      */
     public static ParseResult parse(String message, ServerSettings settings) {
+        return parse(message, settings, null);
+    }
+
+    /**
+     * Parses {@code message} according to {@code settings} and an optional per-token permission predicate.
+     */
+    public static ParseResult parse(String message, ServerSettings settings, Predicate<TokenType> permissionCheck) {
         if (message == null || message.isEmpty()) {
             return new ParseResult(Collections.emptyList(), 0, false);
         }
@@ -90,7 +100,7 @@ public final class ChatTokens {
                 if (close > i + 1) {
                     String candidate = message.substring(i, close + 1);
                     TokenType type = TokenType.fromBracketed(candidate);
-                    if (type != null && isAllowed(type, settings)) {
+                    if (type != null && isAllowed(type, settings) && (permissionCheck == null || permissionCheck.test(type))) {
                         if (tokenCount < maxTokens) {
                             if (plain.length() > 0) {
                                 segments.add(Segment.text(plain.toString()));
@@ -120,9 +130,10 @@ public final class ChatTokens {
         if (settings == null) {
             return true;
         }
+        if (type.isItemLike()) {
+            return settings.allowItem();
+        }
         switch (type) {
-            case ITEM:
-                return settings.allowItem();
             case INV:
                 return settings.allowInv();
             case ENDER:

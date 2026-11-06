@@ -7,6 +7,28 @@ and the project uses [Semantic Versioning](https://semver.org/).
 Все заметные изменения проекта записываются в этот файл. Каждая версия описана сначала на английском,
 затем на русском.
 
+## [0.2.0] - 2026-04-19
+
+### English
+
+#### Added
+- Shulker Box inspection: clicking a Shulker Box inside a shared `[inv]` or `[ender]` window opens its contents in a read-only view with a `← Back` button to return to the inventory or Ender chest. Sharing a Shulker Box in chat with `[item]` also makes the chat tag clickable so anyone can open and inspect all 27 slots inside.
+- Quick slot and equipment chat tags:
+  - `[offhand]` (or `[off]`) shows the item in your off-hand.
+  - `[armor]` (or `[armour]`) shows all worn armor pieces inline in chat, each with its own rarity color and full hover tooltip.
+  - `[slot1]` through `[slot9]` (or `[s1]` – `[s9]`) shows the item in hotbar slot 1–9 without switching your held item.
+- Granular permissions for Paper, Purpur, Folia, and Spigot servers (compatible with LuckPerms): `chatitems.item`, `chatitems.inv`, `chatitems.ender` (enabled for everyone by default) and `chatitems.bypass.cooldown` (for VIPs, moderators, and admins).
+
+### Русский
+
+#### Добавлено
+- Просмотр шалкеровых ящиков: клик по шалкеру внутри открытого окна `[inv]` или `[ender]` открывает его содержимое в режиме только для просмотра с кнопкой `← Назад` для возврата к инвентарю или эндер-сундуку. Если показать шалкер в чате через `[item]`, тег в чате также становится кликабельным и позволяет любому игроку открыть и посмотреть все 27 слотов внутри.
+- Быстрые теги слотов и снаряжения в чате:
+  - `[offhand]` (или `[off]`) показывает предмет во второй руке.
+  - `[armor]` (или `[armour]`) выводит в строку все надетые элементы брони, каждый со своим цветом редкости и полной всплывающей подсказкой.
+  - `[slot1]` – `[slot9]` (или `[s1]` – `[s9]`) показывает предмет из нужного слота хотбара (1–9), не переключая предмет в руке.
+- Детальные права (permissions) для серверов Paper, Purpur, Folia и Spigot (совместимы с LuckPerms): `chatitems.item`, `chatitems.inv`, `chatitems.ender` (по умолчанию доступны всем) и `chatitems.bypass.cooldown` (обход кулдауна для VIP, модераторов и администраторов).
+
 ## [0.1.0] - 2026-04-19
 
 ### English

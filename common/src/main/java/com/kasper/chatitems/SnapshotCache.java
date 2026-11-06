@@ -71,6 +71,26 @@ public final class SnapshotCache<S> {
     }
 
     /**
+     * Stores an immutable shulker box snapshot ({@link SnapshotType#SHULKER}).
+     */
+    public synchronized InventorySnapshot<S> storeShulker(
+            UUID ownerUuid,
+            String shulkerTitle,
+            List<S> shulkerSlots,
+            long nowMillis,
+            int ttlSeconds
+    ) {
+        pruneExpiredLocked(nowMillis);
+        evictOldestIfFullLocked();
+        String id = nextUniqueIdLocked();
+        long expiresAt = nowMillis + Math.max(1, ttlSeconds) * 1000L;
+        InventorySnapshot<S> snapshot = new InventorySnapshot<>(
+                id, ownerUuid, shulkerTitle, SnapshotType.SHULKER, nowMillis, expiresAt, shulkerSlots, null, null);
+        entries.put(id, snapshot);
+        return snapshot;
+    }
+
+    /**
      * Looks up a snapshot by {@code id} at {@code nowMillis}. Returns {@code null} if missing or expired.
      */
     public synchronized InventorySnapshot<S> get(String id, long nowMillis) {

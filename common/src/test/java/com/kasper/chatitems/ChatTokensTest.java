@@ -84,4 +84,44 @@ class ChatTokensTest {
         assertEquals(" and [inv] and ", noInv.segments().get(2).text());
         assertEquals(TokenType.ENDER, noInv.segments().get(3).tokenType());
     }
+
+    @Test
+    void parsesOffhandArmorAndHotbarSlotTags() {
+        ServerSettings s = new ServerSettings(null);
+        s.setMaxTokens(20);
+        ChatTokens.ParseResult res = ChatTokens.parse(
+                "[offhand] [off] [armor] [armour] [slot1] [s2] [slot9] [s9]", s);
+        List<TokenType> types = res.segments().stream()
+                .filter(ChatTokens.Segment::isToken)
+                .map(ChatTokens.Segment::tokenType)
+                .toList();
+        assertEquals(List.of(
+                TokenType.OFFHAND, TokenType.OFFHAND,
+                TokenType.ARMOR, TokenType.ARMOR,
+                TokenType.SLOT_1, TokenType.SLOT_2,
+                TokenType.SLOT_9, TokenType.SLOT_9
+        ), types);
+        assertEquals(0, TokenType.SLOT_1.hotbarIndex());
+        assertEquals(1, TokenType.SLOT_2.hotbarIndex());
+        assertEquals(8, TokenType.SLOT_9.hotbarIndex());
+        assertEquals(-1, TokenType.ITEM.hotbarIndex());
+        assertTrue(TokenType.OFFHAND.isItemLike());
+        assertTrue(TokenType.ARMOR.isItemLike());
+        assertTrue(TokenType.SLOT_5.isItemLike());
+        assertFalse(TokenType.INV.isItemLike());
+        assertFalse(TokenType.ENDER.isItemLike());
+    }
+
+    @Test
+    void respectsPermissionFilterPredicate() {
+        ServerSettings s = new ServerSettings(null);
+        ChatTokens.ParseResult res = ChatTokens.parse(
+                "Check [item], [inv] and [ender]", s, type -> type != TokenType.ENDER);
+        assertEquals(2, res.tokenCount());
+        List<TokenType> types = res.segments().stream()
+                .filter(ChatTokens.Segment::isToken)
+                .map(ChatTokens.Segment::tokenType)
+                .toList();
+        assertEquals(List.of(TokenType.ITEM, TokenType.INV), types);
+    }
 }

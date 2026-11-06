@@ -15,6 +15,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.block.Blocks;
 
 import java.lang.reflect.Method;
@@ -203,6 +204,12 @@ final class TestScreens {
         player.getEnderChestInventory().setItem(7, new ItemStack(Items.EMERALD_BLOCK, 16));
         player.getEnderChestInventory().setItem(8, new ItemStack(Items.TRIDENT));
         player.getEnderChestInventory().setItem(9, new ItemStack(Items.TOTEM_OF_UNDYING));
+        ItemStack shulker = new ItemStack(Items.SHULKER_BOX);
+        shulker.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(List.of(
+                new ItemStack(Items.NETHERITE_SCRAP, 16),
+                new ItemStack(Items.ECHO_SHARD, 8)
+        )));
+        player.getEnderChestInventory().setItem(10, shulker);
 
         player.containerMenu.broadcastChanges();
     }
@@ -291,6 +298,27 @@ final class TestScreens {
         ItemStack moved = menu.quickMoveStack(player, 0);
         if (!moved.isEmpty() || !menu.getSlot(0).getItem().is(Items.ELYTRA)) {
             throw new AssertionError("ReadOnlyChestMenu allowed quickMoveStack to take an item from ender snapshot!");
+        }
+    }
+
+    static void verifyShulkerSubMenu(Minecraft client) {
+        MinecraftServer server = client.getSingleplayerServer();
+        if (server == null) {
+            throw new AssertionError("Singleplayer server is null");
+        }
+        ServerPlayer player = server.getPlayerList().getPlayers().get(0);
+        AbstractContainerMenu menu = player.containerMenu;
+        if (!(menu instanceof ReadOnlyChestMenu)) {
+            throw new AssertionError("Expected ReadOnlyChestMenu for shulker sub-view, got " + menu.getClass().getName());
+        }
+        if (!menu.getSlot(0).getItem().is(Items.NETHERITE_SCRAP)) {
+            throw new AssertionError("Expected NETHERITE_SCRAP in shulker sub-view slot 0, got " + menu.getSlot(0).getItem());
+        }
+        if (!menu.getSlot(1).getItem().is(Items.ECHO_SHARD)) {
+            throw new AssertionError("Expected ECHO_SHARD in shulker sub-view slot 1, got " + menu.getSlot(1).getItem());
+        }
+        if (!menu.getSlot(InventorySnapshot.SHULKER_BACK_SLOT).getItem().is(Items.ARROW)) {
+            throw new AssertionError("Expected ARROW back button in shulker sub-view slot " + InventorySnapshot.SHULKER_BACK_SLOT);
         }
     }
 }

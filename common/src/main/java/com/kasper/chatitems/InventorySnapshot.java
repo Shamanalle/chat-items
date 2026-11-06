@@ -27,6 +27,11 @@ public final class InventorySnapshot<S> {
     public static final int INV_MAIN_SIZE = 36;
     public static final int INV_ARMOR_SIZE = 4;
     public static final int ENDER_SIZE = 27;
+    public static final int SHULKER_SIZE = 27;
+
+    public static final int SHULKER_WITH_BACK_ROWS = 4;
+    public static final int SHULKER_WITH_BACK_SIZE = 36;
+    public static final int SHULKER_BACK_SLOT = 31;
 
     public static final int CHEST_SLOT_HELMET = 45;
     public static final int CHEST_SLOT_CHESTPLATE = 46;
@@ -125,7 +130,7 @@ public final class InventorySnapshot<S> {
         for (int i = 0; i < size; i++) {
             out.add(emptyStack);
         }
-        if (type == SnapshotType.ENDER) {
+        if (type == SnapshotType.ENDER || type == SnapshotType.SHULKER) {
             int limit = Math.min(ENDER_SIZE, mainSlots.size());
             for (int i = 0; i < limit; i++) {
                 S item = mainSlots.get(i);
@@ -156,6 +161,33 @@ public final class InventorySnapshot<S> {
         }
         // Offhand slot (50)
         out.set(CHEST_SLOT_OFFHAND, offhandSlot != null ? offhandSlot : emptyStack);
+        return Collections.unmodifiableList(out);
+    }
+
+    /**
+     * Builds the 4-row (36-slot) layout for viewing a shulker box inside a parent {@code [inv]} or
+     * {@code [ender]} snapshot: slots {@code 0..26} are the shulker's 27 slots, slots {@code 27..35}
+     * are separator panes with slot {@code 31} ({@link #SHULKER_BACK_SLOT}) holding the back button.
+     */
+    public static <S> List<S> toShulkerWithBackSlots(
+            List<S> shulkerSlots,
+            S emptyStack,
+            S separatorStack,
+            S backStack
+    ) {
+        List<S> out = new ArrayList<>(SHULKER_WITH_BACK_SIZE);
+        for (int i = 0; i < SHULKER_WITH_BACK_SIZE; i++) {
+            out.add(emptyStack);
+        }
+        int limit = shulkerSlots == null ? 0 : Math.min(SHULKER_SIZE, shulkerSlots.size());
+        for (int i = 0; i < limit; i++) {
+            S item = shulkerSlots.get(i);
+            out.set(i, item != null ? item : emptyStack);
+        }
+        for (int slot = SHULKER_SIZE; slot < SHULKER_WITH_BACK_SIZE; slot++) {
+            out.set(slot, separatorStack != null ? separatorStack : emptyStack);
+        }
+        out.set(SHULKER_BACK_SLOT, backStack != null ? backStack : emptyStack);
         return Collections.unmodifiableList(out);
     }
 }

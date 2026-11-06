@@ -54,6 +54,26 @@ class SnapshotCacheTest {
         assertEquals(27, chest27.size());
         assertEquals("ender_0", chest27.get(0));
         assertEquals("ender_26", chest27.get(26));
+
+        List<String> shulkerSlots = new ArrayList<>();
+        for (int i = 0; i < 27; i++) {
+            shulkerSlots.add("shulker_" + i);
+        }
+        InventorySnapshot<String> shulker = cache.storeShulker(owner, "Red Shulker Box", shulkerSlots, 1_000L, 60);
+        assertEquals(SnapshotType.SHULKER, shulker.type());
+        assertEquals("Red Shulker Box", shulker.ownerName());
+        List<String> shulker27 = shulker.toChestSlots("empty", "pane");
+        assertEquals(27, shulker27.size());
+        assertEquals("shulker_0", shulker27.get(0));
+        assertEquals("shulker_26", shulker27.get(26));
+
+        List<String> shulker36 = InventorySnapshot.toShulkerWithBackSlots(shulkerSlots, "empty", "pane", "back_arrow");
+        assertEquals(36, shulker36.size());
+        assertEquals("shulker_0", shulker36.get(0));
+        assertEquals("shulker_26", shulker36.get(26));
+        assertEquals("pane", shulker36.get(27));
+        assertEquals("back_arrow", shulker36.get(InventorySnapshot.SHULKER_BACK_SLOT));
+        assertEquals("pane", shulker36.get(35));
     }
 
     @Test

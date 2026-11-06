@@ -34,13 +34,17 @@ Type **`[item]`**, **`[inv]`** or **`[ender]`** in chat to show the item in your
 
 | What you type | What appears in chat | What happens on hover or click |
 |---|---|---|
-| `[item]`, `[i]`, `[hand]` | `[Sword Name ×count]` in the item's rarity color (falls back to off-hand if main hand is empty) | Shows the full native Minecraft item tooltip: enchantments, durability, attribute modifiers, lore, and components |
-| `[inv]` | `[Player's Inventory]` in aqua | Clicking opens a read-only 6-row chest view with armor, off-hand, main inventory, and hotbar frozen at the moment the message was sent |
-| `[ender]` | `[Player's Ender Chest]` in light purple | Clicking opens a read-only 3-row chest view of the player's Ender chest frozen at the moment the message was sent |
+| `[item]`, `[i]`, `[hand]` | `[Sword Name ×count]` in the item's rarity color (falls back to off-hand if main hand is empty) | Shows the full native Minecraft item tooltip (enchantments, durability, attribute modifiers, lore, and components); if the item is a Shulker Box, clicking opens a read-only view of all 27 slots |
+| `[offhand]`, `[off]` | `[Shield]` in the item's rarity color | Shows the full tooltip of the item in your off-hand |
+| `[armor]`, `[armour]` | `[Helmet] [Chestplate] [Leggings] [Boots]` | Shows all worn armor pieces inline, each with its own rarity color and full hover tooltip |
+| `[slot1]` – `[slot9]`, `[s1]` – `[s9]` | `[Item Name ×count]` from hotbar slot 1–9 | Shows the item in that hotbar slot without switching your held item |
+| `[inv]`, `[inventory]` | `[Player's Inventory]` in aqua | Clicking opens a read-only 6-row chest view with armor, off-hand, main inventory, and hotbar frozen at the moment the message was sent |
+| `[ender]`, `[enderchest]`, `[ec]` | `[Player's Ender Chest]` in light purple | Clicking opens a read-only 3-row chest view of the player's Ender chest frozen at the moment the message was sent |
 
+- **Shulker Box inspection:** clicking any Shulker Box inside an open `[inv]` or `[ender]` window opens its 27 slots in a read-only view with a `← Back` button to return to the inventory or Ender chest.
 - **Immutable snapshots:** changing your items after sending `[inv]` or `[ender]` does not change the snapshot in chat. Snapshots expire automatically after a configurable time.
 - **Strict read-only view:** clicking, shift-clicking, number-key swapping, dragging, double-clicking, or dropping inside a snapshot window is blocked on the server and resynchronized immediately.
-- **Anti-spam limits:** a configurable maximum number of tokens per message and a per-player cooldown keep chat clean.
+- **Anti-spam limits & permissions:** configurable maximum number of tokens per message and a per-player cooldown keep chat clean; Paper/Spigot servers also support LuckPerms permissions (`chatitems.item`, `chatitems.inv`, `chatitems.ender`, `chatitems.bypass.cooldown`, `chatitems.admin`).
 
 ![Read-only inventory snapshot with armor, off-hand, and hotbar](docs/images/store-inv.png)
 

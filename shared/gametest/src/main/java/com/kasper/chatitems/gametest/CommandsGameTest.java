@@ -92,6 +92,9 @@ public class CommandsGameTest implements FabricClientGameTest {
             context.getInput().setCursorPos(1650, 790);
             context.waitTicks(5);
             storeShot(context, "store-ender");
+            context.runOnClient(client -> TestScreens.command(client, "chatitems view " + enderId + " 10"));
+            context.waitTicks(15);
+            context.runOnClient(TestScreens::verifyShulkerSubMenu);
             context.runOnClient(TestScreens::closeContainer);
             context.waitTicks(10);
 

@@ -14,3 +14,15 @@ permissions:
   chatitems.admin:
     description: Configure Chat Items via /chatitems
     default: op
+  chatitems.item:
+    description: Use [item], [offhand], [armor], and [slot1]-[slot9] in chat
+    default: true
+  chatitems.inv:
+    description: Use [inv] in chat to share inventory snapshots
+    default: true
+  chatitems.ender:
+    description: Use [ender] in chat to share ender chest snapshots
+    default: true
+  chatitems.bypass.cooldown:
+    description: Bypass the per-player chat token cooldown
+    default: false

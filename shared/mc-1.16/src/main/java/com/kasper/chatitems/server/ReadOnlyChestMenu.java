@@ -15,15 +15,40 @@ import net.minecraft.world.item.ItemStack;
  */
 public final class ReadOnlyChestMenu extends ChestMenu {
 
+    private final String snapshotId;
+    private final String parentSnapshotId;
+
     public ReadOnlyChestMenu(int containerId, Inventory playerInventory, Container snapshotContainer, int rows) {
-        super(rows == 6 ? MenuType.GENERIC_9x6 : MenuType.GENERIC_9x3,
+        this(containerId, playerInventory, snapshotContainer, rows, null, null);
+    }
+
+    public ReadOnlyChestMenu(
+            int containerId,
+            Inventory playerInventory,
+            Container snapshotContainer,
+            int rows,
+            String snapshotId,
+            String parentSnapshotId
+    ) {
+        super(rows == 6 ? MenuType.GENERIC_9x6 : rows == 4 ? MenuType.GENERIC_9x4 : MenuType.GENERIC_9x3,
                 containerId, playerInventory, snapshotContainer, rows);
+        this.snapshotId = snapshotId;
+        this.parentSnapshotId = parentSnapshotId;
+    }
+
+    public String snapshotId() {
+        return snapshotId;
+    }
+
+    public String parentSnapshotId() {
+        return parentSnapshotId;
     }
 
     @Override
     public ItemStack clicked(int slotId, int button, ClickType clickType, Player player) {
         broadcastChanges();
         McCompat.resyncMenu(player, this);
+        ChatItemsServer.onMenuClick(player, snapshotId, parentSnapshotId, slotId);
         return ItemStack.EMPTY;
     }
 
