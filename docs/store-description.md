@@ -8,9 +8,9 @@ The Modrinth project page is `docs/modrinth.md`: the whole page, in English, wit
 
 ## English
 
-**Name:** Chat Items
+**Name:** Chat Items: Show Items, Inventory & Ender Chest in Chat
 
-**Summary:** Type [item], [inv] or [ender] in chat to show items with tooltips and read-only inventory snapshots. Server-side, vanilla clients welcome. Forge, NeoForge, Fabric, Paper. 1.16.5 - 26.3.
+**Summary:** Type [item], [armor], [inv] or [ender] in chat to show items with tooltips, shulker boxes and read-only inventory snapshots. Server-side, vanilla clients welcome. Forge, NeoForge, Fabric, Paper. 1.16.5 - 26.3.
 
 **Categories:** Utility, Social, Server Utility
 
@@ -28,9 +28,9 @@ The Modrinth project page is `docs/modrinth.md`: the whole page, in English, wit
 
 ## Русский
 
-**Название:** Chat Items
+**Название:** Chat Items: Show Items, Inventory & Ender Chest in Chat
 
-**Краткое описание** (на площадках только на английском, как выше). Перевод: Напишите [item], [inv] или [ender] в чат, чтобы показать предметы с подсказками и снимки инвентаря только для просмотра. Серверный мод и плагин, подходит для ванильных клиентов. Forge, NeoForge, Fabric, Paper. 1.16.5 - 26.3.
+**Краткое описание** (на площадках только на английском, как выше). Перевод: Напишите [item], [armor], [inv] или [ender] в чат, чтобы показать предметы с подсказками, шалкеровые ящики и снимки инвентаря только для просмотра. Серверный мод и плагин, подходит для ванильных клиентов. Forge, NeoForge, Fabric, Paper. 1.16.5 - 26.3.
 
 **Категории:** Utility, Social, Server Utility
 

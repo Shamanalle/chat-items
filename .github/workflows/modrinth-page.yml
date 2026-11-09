@@ -22,7 +22,12 @@ jobs:
 
       - name: Build the request
         run: |
+          title=$(grep -m1 '^\*\*Name:\*\*' docs/store-description.md | sed 's/^\*\*Name:\*\* *//')
           summary=$(grep -m1 '^\*\*Summary:\*\*' docs/store-description.md | sed 's/^\*\*Summary:\*\* *//')
+          if [ -z "${title}" ]; then
+            echo "::error file=docs/store-description.md::No **Name:** line"
+            exit 1
+          fi
           if [ -z "${summary}" ]; then
             echo "::error file=docs/store-description.md::No **Summary:** line"
             exit 1
@@ -35,9 +40,9 @@ jobs:
             echo "::error file=docs/modrinth.md::The page is empty"
             exit 1
           fi
-          jq -n --arg description "${summary}" --rawfile body docs/modrinth.md \
-            '{description: $description, body: $body}' > request.json
-          echo "Summary: ${#summary} characters; page: $(wc -c < docs/modrinth.md) bytes"
+          jq -n --arg title "${title}" --arg description "${summary}" --rawfile body docs/modrinth.md \
+            '{title: $title, description: $description, body: $body}' > request.json
+          echo "Title: ${title}; Summary: ${#summary} characters; page: $(wc -c < docs/modrinth.md) bytes"
 
       - name: Check the gallery
         run: |
