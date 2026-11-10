@@ -7,6 +7,28 @@ and the project uses [Semantic Versioning](https://semver.org/).
 Все заметные изменения проекта записываются в этот файл. Каждая версия описана сначала на английском,
 затем на русском.
 
+## [1.2.0] - 2026-11-10
+
+### English
+
+#### Added
+- Hovering a Shulker Box or Bundle inside an `[inv]` or `[ender]` window shows a click-to-inspect hint, and clicking nested Bundles inside Shulker Boxes lets you step back level by level with `← Back`.
+- Clicking any command in `/chatitems help` (or a typo suggestion) fills it directly into your chat bar; Tab-completion now shows only player commands to regular players and full settings to operators.
+
+#### Fixed
+- On Paper, Purpur, Folia, and Spigot servers, shared item tags now show vanilla item names in each viewer's own game language with accurate rarity colors, and `[inv]` / `[ender]` work reliably across regional threads on Folia.
+- Small fixes.
+
+### Русский
+
+#### Добавлено
+- При наведении курсора на шалкеровый ящик или мешочек внутри окна `[inv]` или `[ender]` показывается подсказка о просмотре, а при открытии вложенных мешочков внутри шалкеров кнопка `← Назад` возвращает на шаг выше по очереди.
+- Клик по любой команде в `/chatitems help` (или в подсказке при опечатке) сразу подставляет её в строку чата, а автодополнение по `Tab` показывает обычным игрокам только доступные им команды.
+
+#### Исправлено
+- На серверах Paper, Purpur, Folia и Spigot названия стандартных предметов в тегах переводятся на язык игры каждого получателя с точными цветами редкости, а `[inv]` и `[ender]` стабильно работают в многопоточном режиме Folia.
+- Мелкие исправления.
+
 ## [1.1.0] - 2026-04-19
 
 ### English
