@@ -329,7 +329,7 @@ public final class ChatItemsServer {
             return;
         }
         InventorySnapshot<ItemStack> snapshot = CACHE.get(snapshotId, System.currentTimeMillis());
-        if (snapshot == null || (snapshot.type() != SnapshotType.INV && snapshot.type() != SnapshotType.ENDER)) {
+        if (snapshot == null) {
             return;
         }
         List<ItemStack> slots = snapshot.toChestSlots(ItemStack.EMPTY, ItemStack.EMPTY);

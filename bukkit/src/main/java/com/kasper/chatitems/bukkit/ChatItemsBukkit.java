@@ -425,25 +425,49 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
             return null;
         }
         ItemMeta meta = stack.getItemMeta();
-        if (!(meta instanceof BlockStateMeta)) {
+        if (meta instanceof BlockStateMeta) {
+            BlockState state;
+            try {
+                state = ((BlockStateMeta) meta).getBlockState();
+            } catch (Throwable ignored) {
+                state = null;
+            }
+            if (state instanceof ShulkerBox) {
+                ItemStack[] contents = ((ShulkerBox) state).getInventory().getContents();
+                List<ItemStack> out = new ArrayList<>(InventorySnapshot.SHULKER_SIZE);
+                for (int i = 0; i < InventorySnapshot.SHULKER_SIZE; i++) {
+                    ItemStack item = i < contents.length ? contents[i] : null;
+                    out.add(cloneOrNull(item));
+                }
+                return out;
+            }
+        }
+        return extractBundleItems(meta);
+    }
+
+    private static List<ItemStack> extractBundleItems(ItemMeta meta) {
+        if (meta == null) {
             return null;
         }
-        BlockState state;
         try {
-            state = ((BlockStateMeta) meta).getBlockState();
+            Class<?> bundleMetaClass = Class.forName("org.bukkit.inventory.meta.BundleMeta");
+            if (!bundleMetaClass.isInstance(meta)) {
+                return null;
+            }
+            Object raw = bundleMetaClass.getMethod("getItems").invoke(meta);
+            if (!(raw instanceof List<?>)) {
+                return null;
+            }
+            List<?> items = (List<?>) raw;
+            List<ItemStack> out = new ArrayList<>(InventorySnapshot.SHULKER_SIZE);
+            for (int i = 0; i < InventorySnapshot.SHULKER_SIZE; i++) {
+                Object entry = i < items.size() ? items.get(i) : null;
+                out.add(entry instanceof ItemStack ? cloneOrNull((ItemStack) entry) : null);
+            }
+            return out;
         } catch (Throwable ignored) {
             return null;
         }
-        if (!(state instanceof ShulkerBox)) {
-            return null;
-        }
-        ItemStack[] contents = ((ShulkerBox) state).getInventory().getContents();
-        List<ItemStack> out = new ArrayList<>(InventorySnapshot.SHULKER_SIZE);
-        for (int i = 0; i < InventorySnapshot.SHULKER_SIZE; i++) {
-            ItemStack item = i < contents.length ? contents[i] : null;
-            out.add(cloneOrNull(item));
-        }
-        return out;
     }
 
     private void openSnapshot(Player viewer, String snapshotId) {

@@ -13,12 +13,15 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.BundleItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.BundleContents;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.block.ShulkerBoxBlock;
 
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -68,16 +71,31 @@ public final class McCompat {
     }
 
     public static List<ItemStack> shulkerItems(ItemStack stack) {
-        if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof BlockItem)
-                || !(((BlockItem) stack.getItem()).getBlock() instanceof ShulkerBoxBlock)) {
+        if (stack == null || stack.isEmpty()) {
             return null;
         }
-        NonNullList<ItemStack> items = NonNullList.withSize(27, ItemStack.EMPTY);
-        ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
-        if (contents != null) {
-            contents.copyInto(items);
+        if (stack.getItem() instanceof BlockItem
+                && ((BlockItem) stack.getItem()).getBlock() instanceof ShulkerBoxBlock) {
+            NonNullList<ItemStack> items = NonNullList.withSize(27, ItemStack.EMPTY);
+            ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
+            if (contents != null) {
+                contents.copyInto(items);
+            }
+            return items;
         }
-        return items;
+        BundleContents bundle = stack.get(DataComponents.BUNDLE_CONTENTS);
+        if (bundle != null || stack.getItem() instanceof BundleItem) {
+            NonNullList<ItemStack> items = NonNullList.withSize(27, ItemStack.EMPTY);
+            if (bundle != null) {
+                Iterator<ItemStack> it = bundle.itemCopies().iterator();
+                int i = 0;
+                while (it.hasNext() && i < 27) {
+                    items.set(i++, it.next());
+                }
+            }
+            return items;
+        }
+        return null;
     }
 
     public static void runOnServer(ServerPlayer player, Runnable task) {

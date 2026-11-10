@@ -6,6 +6,7 @@ import net.minecraft.Util;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.ChatType;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -19,6 +20,7 @@ import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.BundleItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.ShulkerBoxBlock;
@@ -72,16 +74,30 @@ public final class McCompat {
     }
 
     public static List<ItemStack> shulkerItems(ItemStack stack) {
-        if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof BlockItem)
-                || !(((BlockItem) stack.getItem()).getBlock() instanceof ShulkerBoxBlock)) {
+        if (stack == null || stack.isEmpty()) {
             return null;
         }
-        NonNullList<ItemStack> items = NonNullList.withSize(27, ItemStack.EMPTY);
-        CompoundTag tag = stack.getTagElement("BlockEntityTag");
-        if (tag != null && tag.contains("Items", 9)) {
-            ContainerHelper.loadAllItems(tag, items);
+        if (stack.getItem() instanceof BlockItem
+                && ((BlockItem) stack.getItem()).getBlock() instanceof ShulkerBoxBlock) {
+            NonNullList<ItemStack> items = NonNullList.withSize(27, ItemStack.EMPTY);
+            CompoundTag tag = stack.getTagElement("BlockEntityTag");
+            if (tag != null && tag.contains("Items", 9)) {
+                ContainerHelper.loadAllItems(tag, items);
+            }
+            return items;
         }
-        return items;
+        if (stack.getItem() instanceof BundleItem) {
+            NonNullList<ItemStack> items = NonNullList.withSize(27, ItemStack.EMPTY);
+            CompoundTag tag = stack.getTag();
+            if (tag != null && tag.contains("Items", 9)) {
+                ListTag list = tag.getList("Items", 10);
+                for (int i = 0; i < list.size() && i < 27; i++) {
+                    items.set(i, ItemStack.of(list.getCompound(i)));
+                }
+            }
+            return items;
+        }
+        return null;
     }
 
     public static void runOnServer(ServerPlayer player, Runnable task) {

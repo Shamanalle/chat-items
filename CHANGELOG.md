@@ -12,7 +12,7 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ### English
 
 #### Added
-- Shulker Box inspection: clicking a Shulker Box inside a shared `[inv]` or `[ender]` window opens its contents in a read-only view with a `← Back` button to return to the inventory or Ender chest. Sharing a Shulker Box in chat with `[item]` also makes the chat tag clickable so anyone can open and inspect all 27 slots inside.
+- Shulker Box & Bundle inspection: clicking a Shulker Box or Bundle (`1.17+`) inside a shared `[inv]` or `[ender]` window opens its contents in a read-only view with a `← Back` button to return to the inventory or Ender chest. Sharing a Shulker Box or Bundle in chat with `[item]`, `[offhand]`, or `[slot1]`–`[slot9]` also makes the chat tag clickable so anyone can open and inspect the items inside.
 - Quick slot and equipment chat tags:
   - `[offhand]` (or `[off]`) shows the item in your off-hand.
   - `[armor]` (or `[armour]`) shows all worn armor pieces inline in chat, each with its own rarity color and full hover tooltip.
@@ -22,7 +22,7 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ### Русский
 
 #### Добавлено
-- Просмотр шалкеровых ящиков: клик по шалкеру внутри открытого окна `[inv]` или `[ender]` открывает его содержимое в режиме только для просмотра с кнопкой `← Назад` для возврата к инвентарю или эндер-сундуку. Если показать шалкер в чате через `[item]`, тег в чате также становится кликабельным и позволяет любому игроку открыть и посмотреть все 27 слотов внутри.
+- Просмотр шалкеровых ящиков и мешочков (Bundles `1.17+`): клик по шалкеру или мешочку внутри открытого окна `[inv]` или `[ender]` открывает его содержимое в режиме только для просмотра с кнопкой `← Назад` для возврата к инвентарю или эндер-сундуку. Если показать шалкер или мешочек в чате через `[item]`, `[offhand]` или `[slot1]`–`[slot9]`, тег в чате также становится кликабельным и позволяет любому игроку открыть и посмотреть предметы внутри.
 - Быстрые теги слотов и снаряжения в чате:
   - `[offhand]` (или `[off]`) показывает предмет во второй руке.
   - `[armor]` (или `[armour]`) выводит в строку все надетые элементы брони, каждый со своим цветом редкости и полной всплывающей подсказкой.

@@ -1,0 +1,149 @@
+<!--
+  CurseForge project description for the mod (Forge + NeoForge + Fabric + Quilt).
+  Paste into the Description editor in source view (<> button).
+  For the Bukkit Plugins project use docs/curseforge-plugin.html instead.
+  CurseForge allows: p, h1-h6, a, img, strong, em, u, s, code, pre, blockquote,
+  ul, ol, li, table, thead, tbody, tr, th, td, hr, br, div, span, details, summary.
+-->
+
+<p style="text-align: center;">
+  <img src="https://raw.githubusercontent.com/Shamanalle/chat-items/main/docs/images/icon.png" width="128" alt="Chat Items icon">
+</p>
+
+<h1 style="text-align: center;">Chat Items</h1>
+
+<p style="text-align: center;">
+  <strong>Type <code>[item]</code>, <code>[armor]</code>, <code>[offhand]</code>, <code>[slot1]</code>–<code>[slot9]</code>, <code>[inv]</code> or <code>[ender]</code> in chat to show items with full tooltips, inspect Shulker Boxes &amp; Bundles, and share clickable read-only inventory snapshots.</strong><br>
+  A server-side chat utility mod for Forge, NeoForge, Fabric and Quilt, for Minecraft 1.16.5 – 26.3.
+</p>
+
+<blockquote>
+  <p><strong>✔ Modpacks &amp; Vanilla Clients Welcome:</strong> Feel free to include <strong>Chat Items</strong> in any CurseForge or Modrinth modpack — no need to ask! The mod works 100% server-side using native Minecraft chat components and never changes the network protocol: vanilla clients see every tooltip and inventory window without installing the mod, and players with your modpack can join any vanilla server without issues.</p>
+</blockquote>
+
+<p>In vanilla Minecraft there is no quick way to show other players the enchantments on your sword or what is inside your inventory, Ender chest, or Shulker Box without dropping items on the ground. <strong>Chat Items</strong> lets anyone link items and share live, tamper-proof inventory previews directly in chat:</p>
+
+<ul>
+  <li><strong>Show items in chat (<code>[item]</code>, <code>[i]</code>, <code>[hand]</code>):</strong> replaces the tag in your message with the item's name and stack count in its rarity color, with the full native Minecraft item tooltip (enchantments, durability, attribute modifiers, custom lore, potions, and data components) when hovered. If your main hand is empty, it automatically falls back to your off-hand.</li>
+  <li><strong>Armor, off-hand &amp; hotbar slots (<code>[armor]</code>, <code>[offhand]</code>, <code>[slot1]</code>–<code>[slot9]</code>):</strong> type <code>[armor]</code> (or <code>[armour]</code>) to display all worn armor pieces inline with individual tooltips, <code>[offhand]</code> (or <code>[off]</code>) for your off-hand item, or <code>[slot1]</code>–<code>[slot9]</code> (aliases <code>[s1]</code>–<code>[s9]</code>) to link any hotbar slot without switching what you are holding.</li>
+  <li><strong>Read-only inventory &amp; Ender chest snapshots (<code>[inv]</code> and <code>[ender]</code>):</strong> captures an immutable snapshot of your inventory (all 36 slots plus armor and off-hand) or Ender chest at the moment you send the message and inserts a clickable tag in chat. Clicking it opens a strict read-only chest window that blocks taking, moving, number-key swapping, dragging, or duplicating items.</li>
+  <li><strong>Shulker Box &amp; Bundle inspection:</strong> clicking any Shulker Box or Bundle inside an open <code>[inv]</code> or <code>[ender]</code> window opens its contents in a read-only view with a <code>← Back</code> arrow to return to the snapshot. Linking a Shulker Box or Bundle directly in chat via <code>[item]</code> or <code>[slot1..9]</code> also makes the chat tag clickable!</li>
+  <li><strong>Anti-spam &amp; hot-reload settings:</strong> configurable token limit per message, per-player cooldown, and snapshot expiration time, all adjustable in-game via <code>/chatitems</code> or in <code>chatitems-server.properties</code> without restarting the server.</li>
+  <li><strong>13 languages built in:</strong> tags, GUI titles, and command replies automatically match each player's client language.</li>
+</ul>
+
+<p>Works as a lightweight, zero-dependency server-side alternative to InteractiveChat and ShowcaseItem across <strong>Forge, NeoForge, Fabric and Quilt</strong> (and Paper / Purpur / Folia / Spigot via the plugin) for every version from <strong>1.16.5 to 26.3</strong>.</p>
+
+<p><img src="https://raw.githubusercontent.com/Shamanalle/chat-items/main/docs/images/store-chat.png" alt="Show items, armor, off-hand, hotbar slots, inventory and Ender chest in chat"></p>
+
+<h2>How it works</h2>
+
+<table>
+  <thead>
+    <tr><th>What you type</th><th>What appears in chat</th><th>What happens on hover or click</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>[item]</code>, <code>[i]</code>, <code>[hand]</code></td><td><code>[Sword Name ×count]</code> in the item's rarity color</td><td>Shows the full native Minecraft item tooltip; if the item is a Shulker Box or Bundle, clicking opens its contents in a read-only chest view</td></tr>
+    <tr><td><code>[offhand]</code>, <code>[off]</code></td><td><code>[Shield]</code> in the item's rarity color</td><td>Shows the full tooltip of the item in your off-hand (and opens it on click if it is a Shulker Box or Bundle)</td></tr>
+    <tr><td><code>[armor]</code>, <code>[armour]</code></td><td><code>[Helmet] [Chestplate] [Leggings] [Boots]</code></td><td>Shows all worn armor pieces inline, each with its own rarity color and full hover tooltip</td></tr>
+    <tr><td><code>[slot1]</code> – <code>[slot9]</code>, <code>[s1]</code> – <code>[s9]</code></td><td><code>[Item Name ×count]</code> from hotbar slot 1–9</td><td>Shows the item in that hotbar slot without switching your held item</td></tr>
+    <tr><td><code>[inv]</code>, <code>[inventory]</code></td><td><code>[Player's Inventory]</code> in aqua</td><td>Clicking opens a read-only 6-row chest view with armor, off-hand, main inventory, and hotbar frozen at the moment the message was sent</td></tr>
+    <tr><td><code>[ender]</code>, <code>[enderchest]</code>, <code>[ec]</code></td><td><code>[Player's Ender Chest]</code> in light purple</td><td>Clicking opens a read-only 3-row chest view of the player's Ender chest frozen at the moment the message was sent</td></tr>
+  </tbody>
+</table>
+
+<p><img src="https://raw.githubusercontent.com/Shamanalle/chat-items/main/docs/images/store-inv.png" alt="Read-only inventory snapshot with armor, off-hand and hotbar"></p>
+
+<p><img src="https://raw.githubusercontent.com/Shamanalle/chat-items/main/docs/images/store-shulker.png" alt="Read-only Shulker Box inspection with Back button"></p>
+
+<h2>What works where</h2>
+
+<table>
+  <thead>
+    <tr><th>Client</th><th>Server</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Vanilla client</strong> (no mod)</td><td>Fabric, Quilt, Forge, NeoForge with the mod</td><td>Everything works: item tooltips, clickable <code>[inv]</code> / <code>[ender]</code> windows, and Shulker / Bundle inspection</td></tr>
+    <tr><td><strong>Modded client</strong> (modpack)</td><td>Vanilla server without the mod</td><td>Client joins normally without any protocol conflict</td></tr>
+    <tr><td><strong>Singleplayer / LAN</strong></td><td>Fabric, Quilt, Forge, NeoForge with the mod</td><td>Everything works in singleplayer and LAN worlds</td></tr>
+  </tbody>
+</table>
+
+<h2>Versions and files</h2>
+
+<table>
+  <thead>
+    <tr><th>You run</th><th>Minecraft</th><th>File</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Forge</strong></td><td>1.16.5 – 1.21.11, 26.1 – 26.3</td><td><code>chat-items-forge-neoforge-…+mc1.16.5-26.x.jar</code></td></tr>
+    <tr><td><strong>NeoForge</strong></td><td>1.20.1 – 1.21.11, 26.1 – 26.3</td><td>the same file</td></tr>
+    <tr><td><strong>Fabric, Quilt</strong></td><td>1.16.5 – 1.21.11, 26.1 – 26.3</td><td><code>chat-items-fabric-…+mc1.16.5-26.x.jar</code> + <a href="https://www.curseforge.com/minecraft/mc-mods/fabric-api">Fabric API</a></td></tr>
+  </tbody>
+</table>
+
+<p>One universal file serves every Minecraft version of its loader: it picks the right build automatically when the game starts. Running Paper, Purpur, Folia or Spigot? Get the Bukkit plugin from our <a href="https://www.curseforge.com/minecraft/bukkit-plugins/chat-items">CurseForge Bukkit Plugins page</a> or <a href="https://github.com/Shamanalle/chat-items/releases">GitHub Releases</a>.</p>
+
+<h2>Commands and settings</h2>
+
+<table>
+  <thead>
+    <tr><th>Command</th><th>Who</th><th>What it does</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>/chatitems</code> or <code>/chatitems status</code></td><td>everyone</td><td>Shows the version, active chat tokens, per-message limit, cooldown, snapshot TTL, and cached snapshots</td></tr>
+    <tr><td><code>/chatitems view &lt;id&gt;</code></td><td>everyone</td><td>Opens a shared <code>[inv]</code>, <code>[ender]</code>, Shulker Box, or Bundle snapshot (triggered automatically on click)</td></tr>
+    <tr><td><code>/chatitems enabled &lt;true|false&gt;</code></td><td>operators (level 2)</td><td>Turns all chat tokens on or off</td></tr>
+    <tr><td><code>/chatitems item &lt;true|false&gt;</code></td><td>operators (level 2)</td><td>Turns item tags (<code>[item]</code>, <code>[offhand]</code>, <code>[armor]</code>, <code>[slot1..9]</code>) on or off</td></tr>
+    <tr><td><code>/chatitems inv &lt;true|false&gt;</code></td><td>operators (level 2)</td><td>Turns <code>[inv]</code> snapshots on or off</td></tr>
+    <tr><td><code>/chatitems ender &lt;true|false&gt;</code></td><td>operators (level 2)</td><td>Turns <code>[ender]</code> snapshots on or off</td></tr>
+    <tr><td><code>/chatitems max_tokens &lt;1-10&gt;</code></td><td>operators (level 2)</td><td>Sets the maximum number of tokens replaced in a single chat message</td></tr>
+    <tr><td><code>/chatitems cooldown &lt;0-300&gt;</code></td><td>operators (level 2)</td><td>Sets the cooldown in seconds between messages with tokens</td></tr>
+    <tr><td><code>/chatitems ttl &lt;10-3600&gt;</code></td><td>operators (level 2)</td><td>Sets how long snapshots stay viewable, in seconds</td></tr>
+    <tr><td><code>/chatitems reload</code></td><td>operators (level 2)</td><td>Reloads <code>config/chatitems-server.properties</code> from disk</td></tr>
+    <tr><td><code>/chatitems help</code></td><td>everyone</td><td>Lists all <code>/chatitems</code> subcommands</td></tr>
+  </tbody>
+</table>
+
+<p><img src="https://raw.githubusercontent.com/Shamanalle/chat-items/main/docs/images/store-status.png" alt="/chatitems status"></p>
+
+<hr>
+
+<details>
+<summary><strong>🇷🇺 Русский</strong></summary>
+
+<p>В обычном Minecraft нельзя быстро показать другим игрокам зачарования на мече или содержимое своего инвентаря, эндер-сундука, шалкера или мешочка, не выбрасывая вещи на землю. <strong>Chat Items</strong> добавляет удобные теги чата, которые работают полностью на стороне сервера — игроки с обычным ванильным клиентом видят всё без установки мода:</p>
+
+<ul>
+  <li><strong>Показ предметов в чате (<code>[item]</code>, <code>[i]</code>, <code>[hand]</code>):</strong> подставляет в сообщение название и количество предмета в цвете редкости, а при наведении курсора показывает стандартную подсказку Minecraft со всеми зачарованиями, прочностью, атрибутами, описанием и компонентами. Если основная рука пуста, автоматически берётся предмет из второй руки.</li>
+  <li><strong>Броня, вторая рука и слоты хотбара (<code>[armor]</code>, <code>[offhand]</code>, <code>[slot1]</code>–<code>[slot9]</code>):</strong> напишите <code>[armor]</code> (или <code>[armour]</code>), чтобы вывести в строку всю надетую броню с подсказками каждого элемента, <code>[offhand]</code> (или <code>[off]</code>) — для предмета во второй руке, либо <code>[slot1]</code>–<code>[slot9]</code> (алиасы <code>[s1]</code>–<code>[s9]</code>) — для любого слота хотбара без переключения предмета в руке.</li>
+  <li><strong>Снимки инвентаря и эндер-сундука только для просмотра (<code>[inv]</code> и <code>[ender]</code>):</strong> сохраняет неизменяемый снимок вашего инвентаря (все 36 слотов, броня и вторая рука) или эндер-сундука на момент отправки сообщения и вставляет кликабельную ссылку в чат. Любой нажавший игрок открывает окно сундука только для просмотра, откуда нельзя забрать, переложить или дюпнуть вещи.</li>
+  <li><strong>Просмотр шалкеровых ящиков и мешочков (Shulker Box &amp; Bundle):</strong> клик по любому шалкеровому ящику или мешочку внутри открытого окна <code>[inv]</code> или <code>[ender]</code> открывает его содержимое только для просмотра с кнопкой <code>← Назад</code> для возврата к снимку. Если отправить шалкер или мешочек напрямую через <code>[item]</code> или <code>[slot1..9]</code>, сам тег в чате тоже становится кликабельным!</li>
+  <li><strong>Защита от спама и горячая перезагрузка:</strong> лимит тегов на сообщение, кулдаун между отправками и время жизни снимков настраиваются прямо из игры через <code>/chatitems</code> или в <code>config/chatitems-server.properties</code> без перезапуска сервера.</li>
+  <li><strong>13 языков:</strong> подписи, заголовки окон и ответы команд автоматически приходят на языке игры каждого игрока.</li>
+</ul>
+
+<p><strong>✔ Разрешение для модпаков:</strong> вы можете свободно добавлять <strong>Chat Items</strong> в любые модпаки на CurseForge и Modrinth без отдельного запроса. Мод не меняет сетевой протокол: с модпаком можно заходить на любые ванильные серверы, а на сервер с модом могут заходить игроки с чистым клиентом.</p>
+
+<h3>Версии и файлы</h3>
+
+<table>
+  <thead>
+    <tr><th>У вас</th><th>Minecraft</th><th>Файл</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Forge</strong></td><td>1.16.5 – 1.21.11, 26.1 – 26.3</td><td><code>chat-items-forge-neoforge-…+mc1.16.5-26.x.jar</code></td></tr>
+    <tr><td><strong>NeoForge</strong></td><td>1.20.1 – 1.21.11, 26.1 – 26.3</td><td>тот же файл</td></tr>
+    <tr><td><strong>Fabric, Quilt</strong></td><td>1.16.5 – 1.21.11, 26.1 – 26.3</td><td><code>chat-items-fabric-…+mc1.16.5-26.x.jar</code> + <a href="https://www.curseforge.com/minecraft/mc-mods/fabric-api">Fabric API</a></td></tr>
+  </tbody>
+</table>
+
+</details>
+
+<hr>
+
+<p style="text-align: center;">
+  <a href="https://github.com/Shamanalle/chat-items/issues">Issues</a> ·
+  <a href="https://github.com/Shamanalle/chat-items">Source</a> ·
+  <a href="https://github.com/Shamanalle/chat-items/blob/main/LICENSE">License: MIT</a>
+</p>
