@@ -1,5 +1,5 @@
 {
-  "description": "Type [item], [inv] or [ender] in chat to show items with tooltips and read-only inventory snapshots. Server-side, vanilla clients welcome. Forge, NeoForge, Fabric, Paper. 1.16.5 - 26.3.",
+  "description": "Type [item], [armor], [inv] or [ender] in chat to show items with tooltips, shulker boxes and read-only inventory snapshots. Server-side, vanilla clients welcome. Forge, NeoForge, Fabric, Paper. 1.16.5 - 26.3.",
   "topics": [
     "minecraft",
     "minecraft-mod",
