@@ -9,24 +9,26 @@ import org.bukkit.inventory.InventoryHolder;
  */
 public final class SnapshotHolder implements InventoryHolder {
 
+    private static final int[] EMPTY_PATH = new int[0];
+
     private final String snapshotId;
-    private final String parentSnapshotId;
+    private final int[] slotPath;
 
     public SnapshotHolder(String snapshotId) {
-        this(snapshotId, null);
+        this(snapshotId, EMPTY_PATH);
     }
 
-    public SnapshotHolder(String snapshotId, String parentSnapshotId) {
+    public SnapshotHolder(String snapshotId, int[] slotPath) {
         this.snapshotId = snapshotId;
-        this.parentSnapshotId = parentSnapshotId;
+        this.slotPath = slotPath == null || slotPath.length == 0 ? EMPTY_PATH : slotPath.clone();
     }
 
     public String snapshotId() {
         return snapshotId;
     }
 
-    public String parentSnapshotId() {
-        return parentSnapshotId;
+    public int[] slotPath() {
+        return slotPath.clone();
     }
 
     @Override

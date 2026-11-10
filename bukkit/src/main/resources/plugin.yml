@@ -5,7 +5,7 @@ api-version: '1.16'
 folia-supported: true
 author: Shamanalle
 website: https://github.com/Shamanalle/chat-items
-description: Type [item], [inv] or [ender] in chat to show items with tooltips and read-only inventory snapshots.
+description: Type [item], [armor], [offhand], [slot1-9], [inv] or [ender] in chat to share items, tooltips, shulker boxes, bundles, and read-only inventory snapshots.
 commands:
   chatitems:
     description: Chat Items settings and read-only snapshot viewer
@@ -25,4 +25,4 @@ permissions:
     default: true
   chatitems.bypass.cooldown:
     description: Bypass the per-player chat token cooldown
-    default: false
+    default: op

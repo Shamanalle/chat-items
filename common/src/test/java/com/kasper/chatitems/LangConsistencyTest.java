@@ -137,6 +137,87 @@ class LangConsistencyTest {
     }
 
     @Test
+    @DisplayName("Every ServerText.translate / ServerText.get call passes the exact number of %s arguments")
+    void callSiteArgumentCountsMatchPlaceholders() {
+        List<String> mismatches = new ArrayList<>();
+        Matcher calls = Pattern.compile("ServerText\\.(translate|get)\\s*\\(").matcher(sources);
+        while (calls.find()) {
+            String kind = calls.group(1);
+            int openParen = calls.end() - 1;
+            List<String> args = parseCallArguments(sources, openParen);
+            if (args == null || args.size() < 2) {
+                continue;
+            }
+            String keyExpr = args.get(1).trim();
+            if (!keyExpr.startsWith("\"") || !keyExpr.endsWith("\"") || keyExpr.length() < 2) {
+                continue;
+            }
+            String literalKey = keyExpr.substring(1, keyExpr.length() - 1);
+            if (literalKey.contains("\"") || literalKey.endsWith(".")) {
+                continue;
+            }
+            String fullKey = kind.equals("get") ? ServerText.PREFIX + literalKey : literalKey;
+            String template = english.get(fullKey);
+            if (template == null) {
+                continue;
+            }
+            int expected = placeholders(template);
+            int actual = args.size() - 2;
+            if (expected != actual) {
+                mismatches.add(fullKey + " expects " + expected + " arg(s), got " + actual + " in ServerText." + kind + args);
+            }
+        }
+        assertTrue(mismatches.isEmpty(), "Argument count mismatches: " + mismatches);
+    }
+
+    private static List<String> parseCallArguments(String src, int openParen) {
+        List<String> args = new ArrayList<>();
+        int depth = 0;
+        boolean inString = false;
+        boolean inChar = false;
+        int argStart = openParen + 1;
+        for (int i = openParen; i < src.length(); i++) {
+            char c = src.charAt(i);
+            if (inString) {
+                if (c == '\\') {
+                    i++;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (inChar) {
+                if (c == '\\') {
+                    i++;
+                } else if (c == '\'') {
+                    inChar = false;
+                }
+                continue;
+            }
+            if (c == '"') {
+                inString = true;
+            } else if (c == '\'') {
+                inChar = true;
+            } else if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                depth--;
+                if (depth == 0) {
+                    String tail = src.substring(argStart, i).trim();
+                    if (!tail.isEmpty() || !args.isEmpty()) {
+                        args.add(tail);
+                    }
+                    return args;
+                }
+            } else if (c == ',' && depth == 1) {
+                args.add(src.substring(argStart, i).trim());
+                argStart = i + 1;
+            }
+        }
+        return null;
+    }
+
+    @Test
     @DisplayName("The server reads the files the same way the game does")
     void serverParserAgrees() throws IOException {
         for (String l : ServerText.LANGUAGES) {

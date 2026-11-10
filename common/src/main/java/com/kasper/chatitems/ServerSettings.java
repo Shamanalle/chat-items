@@ -162,7 +162,9 @@ public final class ServerSettings {
         allowItem = bool(p, "allow_item", ChatItems.DEFAULT_ALLOW_ITEM);
         allowInv = bool(p, "allow_inv", ChatItems.DEFAULT_ALLOW_INV);
         allowEnder = bool(p, "allow_ender", ChatItems.DEFAULT_ALLOW_ENDER);
-        maxTokens = integer(p, "max_tokens", ChatItems.DEFAULT_MAX_TOKENS,
+        String maxTokensKey = p.getProperty("max_tokens") != null || p.getProperty("max_tokens_per_message") == null
+                ? "max_tokens" : "max_tokens_per_message";
+        maxTokens = integer(p, maxTokensKey, ChatItems.DEFAULT_MAX_TOKENS,
                 ChatItems.MIN_MAX_TOKENS, ChatItems.MAX_MAX_TOKENS);
         cooldownSeconds = integer(p, "cooldown_seconds", ChatItems.DEFAULT_COOLDOWN_SECONDS,
                 ChatItems.MIN_COOLDOWN_SECONDS, ChatItems.MAX_COOLDOWN_SECONDS);
@@ -206,7 +208,7 @@ public final class ServerSettings {
         return fallback;
     }
 
-    /** Writes the current values with their comments. */
+    /** Writes the current values, preserving custom comments and unknown keys if the file already exists. */
     public synchronized void save() {
         if (file == null) {
             return;
@@ -215,11 +217,80 @@ public final class ServerSettings {
             if (file.getParent() != null) {
                 Files.createDirectories(file.getParent());
             }
-            Jv.writeString(file, write(), StandardCharsets.UTF_8);
+            String existing = Files.exists(file) ? Jv.readString(file, StandardCharsets.UTF_8) : null;
+            Jv.writeString(file, existing == null ? write() : updateExisting(existing), StandardCharsets.UTF_8);
             modified = Files.getLastModifiedTime(file).toMillis();
         } catch (IOException | RuntimeException e) {
             ModLog.failure("Writing " + file, e);
         }
+    }
+
+    /** Updates known keys in-place inside an existing settings file while keeping custom comments and unknown keys. */
+    synchronized String updateExisting(String existing) {
+        String[][] entries = {
+                {"enabled", String.valueOf(enabled)},
+                {"allow_item", String.valueOf(allowItem)},
+                {"allow_inv", String.valueOf(allowInv)},
+                {"allow_ender", String.valueOf(allowEnder)},
+                {"max_tokens", String.valueOf(maxTokens)},
+                {"cooldown_seconds", String.valueOf(cooldownSeconds)},
+                {"snapshot_ttl_seconds", String.valueOf(snapshotTtlSeconds)},
+                {"language", language},
+        };
+        boolean[] seen = new boolean[entries.length];
+        String[] rawLines = existing.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1);
+        int count = rawLines.length;
+        if (count > 0 && rawLines[count - 1].isEmpty()) {
+            count--;
+        }
+        List<String> out = new ArrayList<>(count + entries.length);
+        for (int i = 0; i < count; i++) {
+            String line = rawLines[i];
+            String trimmed = line.trim();
+            if (!trimmed.isEmpty() && !trimmed.startsWith("#") && !trimmed.startsWith("!")) {
+                int sep = findKeySeparator(trimmed);
+                if (sep > 0) {
+                    String key = trimmed.substring(0, sep).trim();
+                    String lookup = key.equals("max_tokens_per_message") ? "max_tokens" : key;
+                    int idx = indexOfKey(entries, lookup);
+                    if (idx >= 0) {
+                        if (!seen[idx]) {
+                            out.add(entries[idx][0] + "=" + entries[idx][1]);
+                            seen[idx] = true;
+                        }
+                        continue;
+                    }
+                }
+            }
+            out.add(line);
+        }
+        for (int i = 0; i < entries.length; i++) {
+            if (!seen[i]) {
+                out.add(entries[i][0] + "=" + entries[i][1]);
+            }
+        }
+        return String.join(System.lineSeparator(), out) + System.lineSeparator();
+    }
+
+    private static int findKeySeparator(String s) {
+        int eq = s.indexOf('=');
+        int col = s.indexOf(':');
+        if (eq < 0) {
+            return col;
+        }
+        if (col < 0) {
+            return eq;
+        }
+        return Math.min(eq, col);
+    }
+
+    private static int indexOfKey(String[][] entries, String key) {
+        for (int i = 0; i < entries.length; i++) {
+            if (entries[i][0].equals(key)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /** The text of the settings file for the current values. */
@@ -228,12 +299,12 @@ public final class ServerSettings {
         lines.add("# Chat Items: server settings. Changes made here are read without a restart.");
         lines.add("# Chat Items: настройки сервера. Изменения в этом файле применяются без перезапуска.");
         lines.add("");
-        lines.add("# Master switch for chat placeholders ([item], [inv], [ender]): true or false.");
-        lines.add("# Главный переключатель тегов в чате ([item], [inv], [ender]): true или false.");
+        lines.add("# Master switch for all chat placeholders ([item], [armor], [offhand], [slot1-9], [inv], [ender]): true or false.");
+        lines.add("# Главный переключатель всех тегов в чате ([item], [armor], [offhand], [slot1-9], [inv], [ender]): true или false.");
         lines.add("enabled=" + enabled);
         lines.add("");
-        lines.add("# Allow [item] (and aliases [i], [hand]) to show the held item with its tooltip: true or false.");
-        lines.add("# Разрешить [item] (и алиасы [i], [hand]) для показа предмета из руки с тултипом: true или false.");
+        lines.add("# Allow item placeholders ([item], [i], [hand], [offhand], [armor], [slot1] - [slot9]): true or false.");
+        lines.add("# Разрешить предметные теги ([item], [i], [hand], [offhand], [armor], [slot1] - [slot9]): true или false.");
         lines.add("allow_item=" + allowItem);
         lines.add("");
         lines.add("# Allow [inv] (and [inventory]) to share a read-only inventory snapshot: true or false.");
@@ -252,8 +323,8 @@ public final class ServerSettings {
         lines.add("# Кулдаун в секундах между сообщениями с тегами для одного игрока (0 - 300, 0 = без кулдауна).");
         lines.add("cooldown_seconds=" + cooldownSeconds);
         lines.add("");
-        lines.add("# How long [inv] and [ender] snapshots stay clickable in seconds (10 - 3600).");
-        lines.add("# Время жизни снимков [inv] и [ender] в кэше в секундах (10 - 3600).");
+        lines.add("# How long [inv], [ender], shulker, and bundle snapshots stay clickable in seconds (10 - 3600).");
+        lines.add("# Время жизни снимков [inv], [ender], шалкеров и мешков в кэше в секундах (10 - 3600).");
         lines.add("snapshot_ttl_seconds=" + snapshotTtlSeconds);
         lines.add("");
         lines.add("# Default language for console replies and players with unknown locale (en_us, ru_ru, ...).");

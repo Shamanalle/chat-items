@@ -9,9 +9,12 @@ version = "${version}"
 displayName = "Chat Items"
 displayURL = "https://github.com/Shamanalle/chat-items"
 logoFile = "assets/chatitems/icon.png"
-authors = "Kasper"
+authors = "Shamanalle"
+displayTest = "IGNORE_ALL_VERSION"
 description = '''
-Type [item], [inv] or [ender] in chat to show items with tooltips and read-only inventory snapshots. Server-side, vanilla clients welcome.
+Type [item], [armor], [offhand], [slot1]-[slot9], [inv] or [ender] in chat to show items with tooltips, inspect Shulker Boxes & Bundles, and share read-only inventory snapshots. Server-side, vanilla clients welcome.
+
+Пишите [item], [armor], [offhand], [slot1]-[slot9], [inv] или [ender] в чате, чтобы показать предметы с подсказками, содержимое шалкеров и мешочков и снимки инвентаря или эндер-сундука только для просмотра. Работает на сервере, ванильным клиентам мод не нужен.
 '''
 
 [[dependencies.chatitems]]

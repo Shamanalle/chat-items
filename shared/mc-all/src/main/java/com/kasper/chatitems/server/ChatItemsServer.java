@@ -21,12 +21,16 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * Shared server-side chat decorator and read-only snapshot opener for Fabric, Forge, and NeoForge.
  */
 public final class ChatItemsServer {
+
+    public static final int MAX_CONTAINER_DEPTH = 4;
+    private static final int[] EMPTY_PATH = new int[0];
 
     private static final SnapshotCache<ItemStack> CACHE = new SnapshotCache<>();
 
@@ -234,107 +238,152 @@ public final class ChatItemsServer {
      * @return {@code true} if the snapshot was found and opened, {@code false} if expired/missing
      */
     public static boolean openSnapshot(ServerPlayer viewer, String snapshotId) {
-        if (viewer == null) {
-            return false;
-        }
-        String lang = languageOf(viewer);
-        InventorySnapshot<ItemStack> snapshot = CACHE.get(snapshotId, System.currentTimeMillis());
-        if (snapshot == null) {
-            MutableComponent expired = McCompat.literal(ServerText.translate(lang, "chatitems.snapshot.expired"))
-                    .withStyle(ChatFormatting.RED);
-            McCompat.sendSystemMessage(viewer, expired);
-            return false;
-        }
-        int size = snapshot.type().chestSize();
-        int rows = snapshot.type().rows();
-        SimpleContainer container = new SimpleContainer(size);
-        ItemStack pane = McCompat.separatorPane();
-        List<ItemStack> slots = snapshot.toChestSlots(ItemStack.EMPTY, pane);
-        for (int i = 0; i < size && i < slots.size(); i++) {
-            ItemStack stack = slots.get(i);
-            container.setItem(i, stack == null || stack.isEmpty() ? ItemStack.EMPTY : stack.copy());
-        }
-        String titleKey = snapshot.type() == SnapshotType.INV
-                ? "chatitems.gui.inv.title"
-                : snapshot.type() == SnapshotType.ENDER
-                ? "chatitems.gui.ender.title"
-                : "chatitems.gui.shulker.title";
-        Component title = McCompat.literal(ServerText.translate(lang, titleKey, snapshot.ownerName()));
-        String id = snapshot.id();
-        viewer.openMenu(new SimpleMenuProvider(
-                (syncId, playerInv, p) -> new ReadOnlyChestMenu(syncId, playerInv, container, rows, id, null),
-                title));
-        return true;
+        return openContainerPath(viewer, snapshotId, EMPTY_PATH);
     }
 
     /**
-     * Opens a 4-row read-only shulker box view for the shulker in {@code chestSlot} of {@code parentSnapshotId},
-     * with a Back button in slot {@link InventorySnapshot#SHULKER_BACK_SLOT} that returns to the parent snapshot.
+     * Opens a 4-row read-only container view for the shulker box or bundle in {@code chestSlot} of
+     * {@code parentSnapshotId}, with a Back button in slot {@link InventorySnapshot#SHULKER_BACK_SLOT}.
      */
     public static boolean openShulkerSlot(ServerPlayer viewer, String parentSnapshotId, int chestSlot) {
+        return openContainerPath(viewer, parentSnapshotId, new int[]{chestSlot});
+    }
+
+    /**
+     * Opens either the root snapshot ({@code slotPath.length == 0}) or a nested shulker/bundle container
+     * reached by following {@code slotPath} up to {@link #MAX_CONTAINER_DEPTH}.
+     */
+    public static boolean openContainerPath(ServerPlayer viewer, String snapshotId, int[] slotPath) {
         if (viewer == null) {
             return false;
         }
+        int[] path = slotPath == null || slotPath.length == 0 ? EMPTY_PATH : slotPath.clone();
+        if (path.length > MAX_CONTAINER_DEPTH) {
+            return false;
+        }
         String lang = languageOf(viewer);
-        InventorySnapshot<ItemStack> parent = CACHE.get(parentSnapshotId, System.currentTimeMillis());
-        if (parent == null) {
+        InventorySnapshot<ItemStack> root = CACHE.get(snapshotId, System.currentTimeMillis());
+        if (root == null) {
             MutableComponent expired = McCompat.literal(ServerText.translate(lang, "chatitems.snapshot.expired"))
                     .withStyle(ChatFormatting.RED);
             McCompat.sendSystemMessage(viewer, expired);
             return false;
         }
         ItemStack pane = McCompat.separatorPane();
-        List<ItemStack> parentSlots = parent.toChestSlots(ItemStack.EMPTY, pane);
-        if (chestSlot < 0 || chestSlot >= parentSlots.size()) {
-            return false;
+        String inspectHint = ServerText.translate(lang, "chatitems.gui.inspect.hint");
+        List<ItemStack> rootSlots = root.toChestSlots(ItemStack.EMPTY, pane);
+        String id = root.id();
+
+        if (path.length == 0) {
+            int size = root.type().chestSize();
+            int rows = root.type().rows();
+            SimpleContainer container = new SimpleContainer(size);
+            for (int i = 0; i < size && i < rootSlots.size(); i++) {
+                ItemStack stack = rootSlots.get(i);
+                if (stack == null || stack.isEmpty()) {
+                    container.setItem(i, ItemStack.EMPTY);
+                } else if (McCompat.shulkerItems(stack) != null) {
+                    container.setItem(i, McCompat.withInspectHint(stack, inspectHint));
+                } else {
+                    container.setItem(i, stack.copy());
+                }
+            }
+            String titleKey = root.type() == SnapshotType.INV
+                    ? "chatitems.gui.inv.title"
+                    : root.type() == SnapshotType.ENDER
+                    ? "chatitems.gui.ender.title"
+                    : "chatitems.gui.shulker.title";
+            Component title = McCompat.literal(ServerText.translate(lang, titleKey, root.ownerName()));
+            viewer.openMenu(new SimpleMenuProvider(
+                    (syncId, playerInv, p) -> new ReadOnlyChestMenu(syncId, playerInv, container, rows, id, EMPTY_PATH),
+                    title));
+            return true;
         }
-        ItemStack shulkerStack = parentSlots.get(chestSlot);
-        List<ItemStack> shulkerItems = McCompat.shulkerItems(shulkerStack);
-        if (shulkerItems == null) {
-            return false;
+
+        List<ItemStack> currentSlots = rootSlots;
+        ItemStack currentContainer = ItemStack.EMPTY;
+        String parentLabel = root.ownerName();
+        for (int depth = 0; depth < path.length; depth++) {
+            int slot = path[depth];
+            int limit = depth == 0 ? currentSlots.size() : InventorySnapshot.SHULKER_SIZE;
+            if (slot < 0 || slot >= limit || slot >= currentSlots.size()) {
+                return false;
+            }
+            if (depth > 0) {
+                parentLabel = currentContainer.getHoverName().getString();
+            }
+            ItemStack candidate = currentSlots.get(slot);
+            List<ItemStack> inner = McCompat.shulkerItems(candidate);
+            if (inner == null) {
+                return false;
+            }
+            currentContainer = candidate;
+            currentSlots = inner;
         }
-        ItemStack back = McCompat.backButton(ServerText.translate(lang, "chatitems.gui.shulker.back", parent.ownerName()));
-        List<ItemStack> viewSlots = InventorySnapshot.toShulkerWithBackSlots(shulkerItems, ItemStack.EMPTY, pane, back);
+
+        ItemStack back = McCompat.backButton(
+                ServerText.translate(lang, "chatitems.gui.shulker.back", parentLabel),
+                ServerText.translate(lang, "chatitems.gui.back.hint"));
+        List<ItemStack> viewSlots = InventorySnapshot.toShulkerWithBackSlots(currentSlots, ItemStack.EMPTY, pane, back);
         SimpleContainer container = new SimpleContainer(InventorySnapshot.SHULKER_WITH_BACK_SIZE);
+        boolean canDrillDeeper = path.length < MAX_CONTAINER_DEPTH;
         for (int i = 0; i < InventorySnapshot.SHULKER_WITH_BACK_SIZE && i < viewSlots.size(); i++) {
             ItemStack item = viewSlots.get(i);
-            container.setItem(i, item == null || item.isEmpty() ? ItemStack.EMPTY : item.copy());
+            if (item == null || item.isEmpty()) {
+                container.setItem(i, ItemStack.EMPTY);
+            } else if (canDrillDeeper && i < InventorySnapshot.SHULKER_SIZE && McCompat.shulkerItems(item) != null) {
+                container.setItem(i, McCompat.withInspectHint(item, inspectHint));
+            } else {
+                container.setItem(i, item.copy());
+            }
         }
         Component title = McCompat.literal(
-                ServerText.translate(lang, "chatitems.gui.shulker.title", shulkerStack.getHoverName().getString()));
-        String pid = parent.id();
+                ServerText.translate(lang, "chatitems.gui.shulker.title", currentContainer.getHoverName().getString()));
         viewer.openMenu(new SimpleMenuProvider(
                 (syncId, playerInv, p) -> new ReadOnlyChestMenu(
-                        syncId, playerInv, container, InventorySnapshot.SHULKER_WITH_BACK_ROWS, pid, pid),
+                        syncId, playerInv, container, InventorySnapshot.SHULKER_WITH_BACK_ROWS, id, path),
                 title));
         return true;
     }
 
     /**
-     * Handles clicks inside a {@link ReadOnlyChestMenu}: clicking a shulker box inside an {@code [inv]} or
-     * {@code [ender]} snapshot opens its contents, and clicking the Back arrow returns to the parent snapshot.
+     * Handles clicks inside a {@link ReadOnlyChestMenu}: clicking a shulker box or bundle drills into
+     * its contents (up to {@link #MAX_CONTAINER_DEPTH}), and clicking the Back arrow returns one level up.
      */
-    public static void onMenuClick(Player player, String snapshotId, String parentSnapshotId, int slotId) {
-        if (!(player instanceof ServerPlayer) || slotId < 0) {
+    public static void onMenuClick(Player player, String snapshotId, int[] slotPath, int slotId) {
+        if (!(player instanceof ServerPlayer) || snapshotId == null || slotId < 0) {
             return;
         }
         ServerPlayer viewer = (ServerPlayer) player;
-        if (parentSnapshotId != null) {
-            if (slotId == InventorySnapshot.SHULKER_BACK_SLOT) {
-                McCompat.runOnServer(viewer, () -> openSnapshot(viewer, parentSnapshotId));
+        int[] path = slotPath == null ? EMPTY_PATH : slotPath;
+        if (path.length > 0 && slotId == InventorySnapshot.SHULKER_BACK_SLOT) {
+            int[] parentPath = Arrays.copyOf(path, path.length - 1);
+            McCompat.runOnServer(viewer, () -> openContainerPath(viewer, snapshotId, parentPath));
+            return;
+        }
+        if (path.length >= MAX_CONTAINER_DEPTH) {
+            return;
+        }
+        int topSlots = path.length > 0 ? InventorySnapshot.SHULKER_SIZE : viewer.containerMenu.slots.size();
+        if (slotId >= topSlots || slotId >= viewer.containerMenu.slots.size()) {
+            return;
+        }
+        if (path.length == 0) {
+            InventorySnapshot<ItemStack> snapshot = CACHE.get(snapshotId, System.currentTimeMillis());
+            if (snapshot == null || slotId >= snapshot.type().chestSize()) {
+                return;
+            }
+            List<ItemStack> slots = snapshot.toChestSlots(ItemStack.EMPTY, ItemStack.EMPTY);
+            if (slotId < slots.size() && McCompat.shulkerItems(slots.get(slotId)) != null) {
+                McCompat.runOnServer(viewer, () -> openContainerPath(viewer, snapshotId, new int[]{slotId}));
             }
             return;
         }
-        if (snapshotId == null) {
-            return;
-        }
-        InventorySnapshot<ItemStack> snapshot = CACHE.get(snapshotId, System.currentTimeMillis());
-        if (snapshot == null) {
-            return;
-        }
-        List<ItemStack> slots = snapshot.toChestSlots(ItemStack.EMPTY, ItemStack.EMPTY);
-        if (slotId < slots.size() && McCompat.shulkerItems(slots.get(slotId)) != null) {
-            McCompat.runOnServer(viewer, () -> openShulkerSlot(viewer, snapshotId, slotId));
+        ItemStack clicked = viewer.containerMenu.getSlot(slotId).getItem();
+        if (McCompat.shulkerItems(clicked) != null) {
+            int[] nextPath = Arrays.copyOf(path, path.length + 1);
+            nextPath[path.length] = slotId;
+            McCompat.runOnServer(viewer, () -> openContainerPath(viewer, snapshotId, nextPath));
         }
     }
 

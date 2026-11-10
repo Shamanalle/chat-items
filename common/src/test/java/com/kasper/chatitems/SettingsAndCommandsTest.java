@@ -94,5 +94,39 @@ class SettingsAndCommandsTest {
         assertTrue(rootSuggestions.contains("status"));
         assertTrue(rootSuggestions.contains("reload"));
         assertEquals(List.of("on", "off"), AdminCommands.suggestions("item "));
+        assertEquals(List.of("1", "3", "5", "10", "16"), AdminCommands.suggestions("max_tokens "));
+
+        assertEquals(List.of("status", "help"), AdminCommands.suggestions("", false));
+        assertEquals(List.of("status"), AdminCommands.suggestions("st", false));
+        assertEquals(List.of(), AdminCommands.suggestions("item ", false));
+
+        assertEquals("/chatitems status", AdminCommands.suggestedCommand("/chatitems status — show current settings"));
+        assertEquals("/chatitems cooldown ", AdminCommands.suggestedCommand("/chatitems cooldown <0-300> — per-player cooldown"));
+        assertEquals("/chatitems reload", AdminCommands.suggestedCommand("Did you mean: /chatitems reload?"));
+        assertNull(AdminCommands.suggestedCommand("Chat tokens: enabled"));
+    }
+
+    @Test
+    void preservesCustomCommentsAndReadsLegacyMaxTokensAlias() throws IOException {
+        Path file = dir.resolve(ServerSettings.FILE_NAME);
+        String customContent = "# My custom server header\n"
+                + "enabled=true\n"
+                + "max_tokens_per_message=7\n"
+                + "custom_future_option=keep_me\n";
+        Files.writeString(file, customContent, StandardCharsets.UTF_8);
+
+        ServerSettings s = new ServerSettings(file);
+        s.load();
+        assertEquals(7, s.maxTokens());
+
+        s.setCooldownSeconds(12);
+        s.save();
+
+        String saved = Files.readString(file, StandardCharsets.UTF_8);
+        assertTrue(saved.contains("# My custom server header"));
+        assertTrue(saved.contains("custom_future_option=keep_me"));
+        assertTrue(saved.contains("max_tokens=7"));
+        assertFalse(saved.contains("max_tokens_per_message="));
+        assertTrue(saved.contains("cooldown_seconds=12"));
     }
 }

@@ -15,6 +15,7 @@ public final class AdminCommands {
 
     private static final List<String> SUBCOMMANDS = Jv.listOf(
             "status", "enabled", "item", "inv", "ender", "max_tokens", "cooldown", "ttl", "reload", "help");
+    private static final List<String> PUBLIC_SUBCOMMANDS = Jv.listOf("status", "help");
 
     /** What the platform knows about who ran the command. */
     public interface Context {
@@ -222,8 +223,13 @@ public final class AdminCommands {
         return r;
     }
 
-    /** Words to suggest for what has been typed so far after the command. */
+    /** Words to suggest for what has been typed so far after the command (for an admin). */
     public static List<String> suggestions(String typed) {
+        return suggestions(typed, true);
+    }
+
+    /** Words to suggest for what has been typed so far, filtered to read-only commands when {@code !isAdmin}. */
+    public static List<String> suggestions(String typed, boolean isAdmin) {
         String t = typed == null ? "" : typed.toLowerCase(Locale.ROOT);
         String[] words = t.split("\\s+", -1);
         if (words.length > 0 && words[0].isEmpty() && words.length > 1) {
@@ -231,7 +237,9 @@ public final class AdminCommands {
         }
         List<String> options;
         if (words.length <= 1) {
-            options = SUBCOMMANDS;
+            options = isAdmin ? SUBCOMMANDS : PUBLIC_SUBCOMMANDS;
+        } else if (!isAdmin) {
+            options = Collections.emptyList();
         } else if (words.length == 2) {
             switch (words[0]) {
                 case "enabled":
@@ -242,7 +250,7 @@ public final class AdminCommands {
                     break;
                 case "max_tokens":
                 case "max-tokens":
-                    options = Jv.listOf("1", "3", "5", "10");
+                    options = Jv.listOf("1", "3", "5", "10", "16");
                     break;
                 case "cooldown":
                     options = Jv.listOf("0", "3", "5", "10", "30");
@@ -264,6 +272,34 @@ public final class AdminCommands {
             }
         }
         return out;
+    }
+
+    /** If a reply line mentions a {@code /chatitems <subcommand>} command, returns a click-to-suggest prefix, or null. */
+    public static String suggestedCommand(String lineText) {
+        if (lineText == null) {
+            return null;
+        }
+        int slash = lineText.indexOf("/chatitems ");
+        if (slash < 0) {
+            return null;
+        }
+        String rest = lineText.substring(slash + "/chatitems ".length()).trim();
+        int end = 0;
+        while (end < rest.length()) {
+            char c = rest.charAt(end);
+            if (Character.isLetterOrDigit(c) || c == '_' || c == '-') {
+                end++;
+            } else {
+                break;
+            }
+        }
+        if (end == 0) {
+            return "/chatitems ";
+        }
+        String sub = rest.substring(0, end).toLowerCase(Locale.ROOT);
+        boolean takesArg = sub.equals("enabled") || sub.equals("item") || sub.equals("inv") || sub.equals("ender")
+                || sub.equals("max_tokens") || sub.equals("max-tokens") || sub.equals("cooldown") || sub.equals("ttl");
+        return "/chatitems " + sub + (takesArg ? " " : "");
     }
 
     private static String fileName(ServerSettings s) {

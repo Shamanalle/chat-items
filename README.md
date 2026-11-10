@@ -6,10 +6,10 @@
 
 **English** · [Русский](README.ru.md)
 
-Type **`[item]`**, **`[inv]`** or **`[ender]`** in chat to show the item in your hand with its full tooltip or share a clickable, read-only snapshot of your inventory or Ender chest. Works entirely on the server — players with vanilla clients see everything without installing the mod.
+Type **`[item]`**, **`[armor]`**, **`[offhand]`**, **`[slot1]`–`[slot9]`**, **`[inv]`** or **`[ender]`** in chat to show items with full tooltips, inspect Shulker Boxes & Bundles, or share a clickable, read-only snapshot of your inventory or Ender chest. Works entirely on the server — players with vanilla clients see everything without installing the mod.
 
-[![Modrinth](https://img.shields.io/badge/Modrinth-download-00AF5C?logo=modrinth&logoColor=white)](https://modrinth.com/mod/chat-items)
-[![CurseForge](https://img.shields.io/badge/CurseForge-download-F16436?logo=curseforge&logoColor=white)](https://www.curseforge.com/minecraft/mc-mods/chat-items)
+[![CurseForge Mod](https://img.shields.io/badge/CurseForge-mod-F16436?logo=curseforge&logoColor=white)](https://www.curseforge.com/minecraft/mc-mods/chat-items)
+[![CurseForge Plugin](https://img.shields.io/badge/CurseForge-plugin-F16436?logo=curseforge&logoColor=white)](https://www.curseforge.com/minecraft/bukkit-plugins/chat-items)
 [![Release](https://img.shields.io/github/v/release/Shamanalle/chat-items?logo=github&color=brightgreen&include_prereleases)](https://github.com/Shamanalle/chat-items/releases)
 [![Minecraft](https://img.shields.io/badge/Minecraft-1.16.5%20%E2%80%93%2026.3-blue.svg)](#versions-and-files)
 [![Loaders](https://img.shields.io/badge/loaders-Fabric%20%C2%B7%20Quilt%20%C2%B7%20Forge%20%C2%B7%20NeoForge%20%C2%B7%20Paper-7c8cff.svg)](#versions-and-files)
@@ -41,7 +41,7 @@ Type **`[item]`**, **`[inv]`** or **`[ender]`** in chat to show the item in your
 | `[inv]`, `[inventory]` | `[Player's Inventory]` in aqua | Clicking opens a read-only 6-row chest view with armor, off-hand, main inventory, and hotbar frozen at the moment the message was sent |
 | `[ender]`, `[enderchest]`, `[ec]` | `[Player's Ender Chest]` in light purple | Clicking opens a read-only 3-row chest view of the player's Ender chest frozen at the moment the message was sent |
 
-- **Shulker Box & Bundle inspection:** clicking any Shulker Box or Bundle inside an open `[inv]` or `[ender]` window opens its contents in a read-only view with a `← Back` button to return to the inventory or Ender chest.
+- **Shulker Box & Bundle inspection:** hovering any Shulker Box or Bundle inside an open `[inv]` or `[ender]` window shows an inspection hint, and clicking opens its contents (including nested Bundles inside Shulker Boxes) in a read-only view with a `← Back` button to step back cleanly.
 - **Immutable snapshots:** changing your items after sending `[inv]` or `[ender]` does not change the snapshot in chat. Snapshots expire automatically after a configurable time.
 - **Strict read-only view:** clicking, shift-clicking, number-key swapping, dragging, double-clicking, or dropping inside a snapshot window is blocked on the server and resynchronized immediately.
 - **Anti-spam limits & permissions:** configurable maximum number of tokens per message and a per-player cooldown keep chat clean; Paper/Spigot servers also support LuckPerms permissions (`chatitems.item`, `chatitems.inv`, `chatitems.ender`, `chatitems.bypass.cooldown`, `chatitems.admin`).
@@ -77,13 +77,13 @@ Put the mod into the server's `mods/` folder (or `.minecraft/mods/` for singlepl
 | `/chatitems view <id>` | everyone | Opens a shared `[inv]` or `[ender]` snapshot (used automatically when clicking a tag in chat) |
 | `/chatitems reload` | operators (`chatitems.admin` on Bukkit) | Reloads `chatitems-server.properties` from disk (changes are also picked up automatically within a few seconds) |
 | `/chatitems enabled <true\|false>` | operators (`chatitems.admin`) | Turns all chat tokens on or off |
-| `/chatitems item <true\|false>` | operators (`chatitems.admin`) | Turns `[item]` (and `[i]`, `[hand]`) on or off |
+| `/chatitems item <true\|false>` | operators (`chatitems.admin`) | Turns `[item]`, `[offhand]`, `[armor]`, and `[slot1]`–`[slot9]` on or off |
 | `/chatitems inv <true\|false>` | operators (`chatitems.admin`) | Turns `[inv]` on or off |
 | `/chatitems ender <true\|false>` | operators (`chatitems.admin`) | Turns `[ender]` on or off |
-| `/chatitems max_tokens <1-10>` | operators (`chatitems.admin`) | Sets how many tokens in a single chat message are replaced |
+| `/chatitems max_tokens <1-16>` | operators (`chatitems.admin`) | Sets how many tokens in a single chat message are replaced |
 | `/chatitems cooldown <0-300>` | operators (`chatitems.admin`) | Sets the cooldown in seconds between messages with tokens |
 | `/chatitems ttl <10-3600>` | operators (`chatitems.admin`) | Sets how long `[inv]` and `[ender]` snapshots stay viewable, in seconds |
-| `/chatitems help` | everyone | Lists all `/chatitems` subcommands |
+| `/chatitems help` | everyone | Lists all `/chatitems` subcommands (clickable in chat to pre-fill commands) |
 
 Replies come in each player's game language (13 languages included).
 
@@ -94,10 +94,10 @@ Replies come in each player's game language (13 languages included).
 | Key | Default | Range | What it does |
 |---|---|---|---|
 | `enabled` | `true` | `true` / `false` | Master switch for all chat tokens |
-| `allow_item` | `true` | `true` / `false` | Allow `[item]`, `[i]`, and `[hand]` in chat |
+| `allow_item` | `true` | `true` / `false` | Allow `[item]`, `[i]`, `[hand]`, `[offhand]`, `[armor]`, and `[slot1]`–`[slot9]` in chat |
 | `allow_inv` | `true` | `true` / `false` | Allow `[inv]` inventory snapshots in chat |
 | `allow_ender` | `true` | `true` / `false` | Allow `[ender]` Ender chest snapshots in chat |
-| `max_tokens_per_message` | `3` | `1 – 10` | Maximum number of tokens replaced in a single chat message (extra tokens stay as plain text) |
+| `max_tokens` | `3` | `1 – 16` | Maximum number of tokens replaced in a single chat message (extra tokens stay as plain text; legacy alias `max_tokens_per_message` is also accepted) |
 | `cooldown_seconds` | `3` | `0 – 300` | Minimum seconds between token messages from the same player (`0` disables the cooldown) |
 | `snapshot_ttl_seconds` | `300` | `10 – 3600` | Seconds an `[inv]` or `[ender]` snapshot remains available after it is shared |
 | `language` | `en_us` | language code | Default language for the server console and players whose language is unknown |

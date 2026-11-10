@@ -218,6 +218,12 @@ if [ "${state}" = stopped ] && network_failure "${log}" && ! grep -Eiq 'chatitem
   mv "${log}" "${dir}/server-1.log"
   retrying "${loader} ${mc} stopped on a download before loading any mod ($(grep -Eo "${net_failure_pattern}" "${dir}/server-1.log" | head -1)), starting it once more"
   start_server
+elif [ "${state}" = timeout ] && ! grep -Eiq 'chatitems|chat items' "${log}"; then
+  stop_server
+  exec 3>&-
+  mv "${log}" "${dir}/server-1.log"
+  retrying "${loader} ${mc} timed out before loading any mod or plugin, starting it once more"
+  start_server
 fi
 if [ "${state}" != up ]; then
   tail -80 "${log}"

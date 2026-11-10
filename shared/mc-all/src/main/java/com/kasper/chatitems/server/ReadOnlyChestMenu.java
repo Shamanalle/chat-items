@@ -16,11 +16,13 @@ import net.minecraft.world.item.ItemStack;
  */
 public final class ReadOnlyChestMenu extends ChestMenu {
 
+    private static final int[] EMPTY_PATH = new int[0];
+
     private final String snapshotId;
-    private final String parentSnapshotId;
+    private final int[] slotPath;
 
     public ReadOnlyChestMenu(int containerId, Inventory playerInventory, Container snapshotContainer, int rows) {
-        this(containerId, playerInventory, snapshotContainer, rows, null, null);
+        this(containerId, playerInventory, snapshotContainer, rows, null, EMPTY_PATH);
     }
 
     public ReadOnlyChestMenu(
@@ -29,27 +31,29 @@ public final class ReadOnlyChestMenu extends ChestMenu {
             Container snapshotContainer,
             int rows,
             String snapshotId,
-            String parentSnapshotId
+            int[] slotPath
     ) {
         super(rows == 6 ? MenuType.GENERIC_9x6 : rows == 4 ? MenuType.GENERIC_9x4 : MenuType.GENERIC_9x3,
                 containerId, playerInventory, snapshotContainer, rows);
         this.snapshotId = snapshotId;
-        this.parentSnapshotId = parentSnapshotId;
+        this.slotPath = slotPath == null || slotPath.length == 0 ? EMPTY_PATH : slotPath.clone();
     }
 
     public String snapshotId() {
         return snapshotId;
     }
 
-    public String parentSnapshotId() {
-        return parentSnapshotId;
+    public int[] slotPath() {
+        return slotPath.clone();
     }
 
     @Override
     public void clicked(int slotId, int button, ClickType clickType, Player player) {
         broadcastChanges();
         McCompat.resyncMenu(player, this);
-        ChatItemsServer.onMenuClick(player, snapshotId, parentSnapshotId, slotId);
+        if ((clickType == ClickType.PICKUP || clickType == ClickType.QUICK_MOVE) && (button == 0 || button == 1)) {
+            ChatItemsServer.onMenuClick(player, snapshotId, slotPath, slotId);
+        }
     }
 
     @Override

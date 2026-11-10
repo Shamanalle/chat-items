@@ -18,6 +18,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.BundleContents;
 import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.level.block.ShulkerBoxBlock;
 
 import java.util.List;
@@ -51,6 +52,10 @@ public final class McCompat {
         return new ClickEvent(ClickEvent.Action.RUN_COMMAND, command);
     }
 
+    public static ClickEvent clickSuggestCommand(String command) {
+        return new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, command);
+    }
+
     public static ChatFormatting rarityColor(ItemStack stack) {
         ChatFormatting color = stack.getRarity().color();
         return color != null ? color : ChatFormatting.WHITE;
@@ -58,14 +63,43 @@ public final class McCompat {
 
     public static ItemStack separatorPane() {
         ItemStack pane = new ItemStack(Items.GRAY_STAINED_GLASS_PANE);
-        pane.set(DataComponents.CUSTOM_NAME, Component.literal(""));
+        pane.set(DataComponents.CUSTOM_NAME, Component.literal("").withStyle(style -> style.withItalic(false)));
         return pane;
     }
 
     public static ItemStack backButton(String label) {
+        return backButton(label, null);
+    }
+
+    public static ItemStack backButton(String label, String hint) {
         ItemStack arrow = new ItemStack(Items.ARROW);
-        arrow.set(DataComponents.CUSTOM_NAME, Component.literal(label).withStyle(ChatFormatting.YELLOW));
+        arrow.set(DataComponents.CUSTOM_NAME,
+                Component.literal(label).withStyle(style -> style.withColor(ChatFormatting.YELLOW).withItalic(false)));
+        if (hint != null && !hint.isEmpty()) {
+            arrow.set(DataComponents.LORE, new ItemLore(List.of(
+                    Component.literal(hint).withStyle(style -> style.withColor(ChatFormatting.GRAY).withItalic(false)))));
+        }
         return arrow;
+    }
+
+    public static ItemStack withInspectHint(ItemStack stack, String hint) {
+        if (stack == null || stack.isEmpty() || hint == null || hint.isEmpty()) {
+            return stack;
+        }
+        ItemStack copy = stack.copy();
+        ItemLore lore = copy.getOrDefault(DataComponents.LORE, ItemLore.EMPTY);
+        if (lore.lines().size() < ItemLore.MAX_LINES) {
+            Component line = Component.literal(hint)
+                    .withStyle(style -> style.withColor(ChatFormatting.GOLD).withItalic(false));
+            copy.set(DataComponents.LORE, lore.withLineAdded(line));
+        }
+        return copy;
+    }
+
+    public static boolean isSingleplayerHost(MinecraftServer server, ServerPlayer player) {
+        return server != null && player != null
+                && server.isSingleplayer()
+                && server.isSingleplayerOwner(player.getGameProfile());
     }
 
     public static List<ItemStack> shulkerItems(ItemStack stack) {

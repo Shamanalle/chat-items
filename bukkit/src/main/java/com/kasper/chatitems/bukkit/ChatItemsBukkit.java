@@ -16,6 +16,7 @@ import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.chat.TranslatableComponent;
 import net.md_5.bungee.api.chat.hover.content.Content;
 import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.Bukkit;
@@ -29,6 +30,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -41,8 +43,11 @@ import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -52,12 +57,14 @@ import java.util.logging.Level;
 
 /**
  * Paper / Folia / Purpur / Spigot plugin for Minecraft 1.16.5 – 26.3.
- * Replaces {@code [item]} (and aliases {@code [i]}, {@code [hand]}), {@code [inv]}, and {@code [ender]}
- * in chat and serves read-only snapshot windows on {@code /chatitems view <id>}.
+ * Replaces {@code [item]}, {@code [offhand]}, {@code [armor]}, {@code [slot1-9]}, {@code [inv]}, and
+ * {@code [ender]} in chat and serves read-only snapshot windows on {@code /chatitems view <id>}.
  */
 public final class ChatItemsBukkit extends JavaPlugin implements Listener {
 
     private static final int RELOAD_CHECK_TICKS = 40;
+    private static final int MAX_CONTAINER_DEPTH = 4;
+    private static final int[] EMPTY_PATH = new int[0];
 
     private final SnapshotCache<ItemStack> cache = new SnapshotCache<>();
     private Scheduling scheduling;
@@ -106,13 +113,20 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
             if (sender instanceof Player) {
                 Player viewer = (Player) sender;
                 if (args.length >= 3) {
-                    try {
-                        int slot = Integer.parseInt(args[2]);
-                        openShulkerSlot(viewer, args[1], slot);
-                        return true;
-                    } catch (NumberFormatException ignored) {
+                    int depth = args.length - 2;
+                    if (depth > MAX_CONTAINER_DEPTH) {
                         return true;
                     }
+                    int[] path = new int[depth];
+                    try {
+                        for (int i = 0; i < depth; i++) {
+                            path[i] = Integer.parseInt(args[i + 2]);
+                        }
+                        openContainerPath(viewer, args[1], path);
+                    } catch (NumberFormatException ignored) {
+                        // ignore malformed slot argument
+                    }
+                    return true;
                 }
                 openSnapshot(viewer, args[1]);
             }
@@ -127,17 +141,24 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
         }
         Reply reply = AdminCommands.execute(String.join(" ", args), context(sender));
         for (Reply.Line line : reply.lines()) {
-            sender.sendMessage(color(line.kind()) + line.text());
+            String suggested = sender instanceof Player ? AdminCommands.suggestedCommand(line.text()) : null;
+            if (suggested != null) {
+                Player player = (Player) sender;
+                TextComponent comp = new TextComponent(line.text());
+                comp.setColor(bungeeColor(line.kind()));
+                comp.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, suggested));
+                player.spigot().sendMessage(comp);
+            } else {
+                sender.sendMessage(color(line.kind()) + line.text());
+            }
         }
         return true;
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (sender instanceof Player && !sender.hasPermission("chatitems.admin")) {
-            return Collections.emptyList();
-        }
-        return AdminCommands.suggestions(String.join(" ", args));
+        boolean isAdmin = !(sender instanceof Player) || sender.hasPermission("chatitems.admin");
+        return AdminCommands.suggestions(String.join(" ", args), isAdmin);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -145,8 +166,9 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
         ServerSettings settings = ChatItems.settings();
         settings.reloadIfChanged();
         Player sender = event.getPlayer();
+        String rawMessage = event.getMessage();
         ChatTokens.ParseResult parsed = ChatTokens.parse(
-                event.getMessage(), settings, type -> hasTokenPermission(sender, type));
+                rawMessage, settings, type -> hasTokenPermission(sender, type));
         if (!parsed.hasTokens()) {
             return;
         }
@@ -156,46 +178,66 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
             int waitSec = ChatItems.cooldowns().checkRemainingSeconds(sender.getUniqueId(), now, settings.cooldownSeconds());
             event.setCancelled(true);
             String lang = localeOf(sender);
-            sender.sendMessage(ChatColor.RED + ServerText.translate(lang, "chatitems.cooldown.wait", String.valueOf(waitSec)));
+            String warning = ChatColor.RED + ServerText.translate(lang, "chatitems.cooldown.wait", String.valueOf(waitSec));
+            scheduling.runForPlayer(sender, () -> sender.sendMessage(warning));
             return;
         }
 
-        ItemStack heldSnapshot = captureHeldItem(sender);
-        PlayerInventory senderInv = sender.getInventory();
-        ItemStack offhandItem = cloneOrNull(senderInv.getItemInOffHand());
-        List<ItemStack> hotbarItems = new ArrayList<>(9);
-        for (int i = 0; i < 9; i++) {
-            hotbarItems.add(cloneOrNull(senderInv.getItem(i)));
-        }
-        List<ItemStack> armorItems = Jv.listOf(
-                cloneOrNull(senderInv.getHelmet()),
-                cloneOrNull(senderInv.getChestplate()),
-                cloneOrNull(senderInv.getLeggings()),
-                cloneOrNull(senderInv.getBoots())
-        );
-
-        InventorySnapshot<ItemStack> invSnapshot = null;
-        InventorySnapshot<ItemStack> enderSnapshot = null;
-        for (ChatTokens.Segment seg : parsed.segments()) {
-            if (seg.tokenType() == TokenType.INV && invSnapshot == null) {
-                invSnapshot = captureInventory(sender, now, settings.snapshotTtlSeconds());
-            } else if (seg.tokenType() == TokenType.ENDER && enderSnapshot == null) {
-                enderSnapshot = captureEnder(sender, now, settings.snapshotTtlSeconds());
-            }
-        }
-
-        Set<Player> recipients = new java.util.HashSet<>(event.getRecipients());
+        Set<Player> recipients = new HashSet<>(event.getRecipients());
+        String chatFormat = event.getFormat();
+        String senderName = sender.getName();
+        String senderDisplayName = sender.getDisplayName();
+        int ttlSeconds = settings.snapshotTtlSeconds();
         event.setCancelled(true);
-        getLogger().info("<" + sender.getName() + "> " + event.getMessage());
 
-        Map<ItemStack, String> shulkerIds = new IdentityHashMap<>();
-        for (Player recipient : recipients) {
-            String lang = localeOf(recipient);
-            BaseComponent[] line = buildChatLine(
-                    sender, parsed, heldSnapshot, offhandItem, hotbarItems, armorItems,
-                    invSnapshot, enderSnapshot, shulkerIds, lang, now, settings.snapshotTtlSeconds());
-            recipient.spigot().sendMessage(line);
-        }
+        scheduling.runForPlayer(sender, () -> {
+            if (!sender.isOnline()) {
+                return;
+            }
+            ItemStack heldSnapshot = captureHeldItem(sender);
+            PlayerInventory senderInv = sender.getInventory();
+            ItemStack offhandItem = cloneOrNull(senderInv.getItemInOffHand());
+            List<ItemStack> hotbarItems = new ArrayList<>(9);
+            for (int i = 0; i < 9; i++) {
+                hotbarItems.add(cloneOrNull(senderInv.getItem(i)));
+            }
+            List<ItemStack> armorItems = Jv.listOf(
+                    cloneOrNull(senderInv.getHelmet()),
+                    cloneOrNull(senderInv.getChestplate()),
+                    cloneOrNull(senderInv.getLeggings()),
+                    cloneOrNull(senderInv.getBoots())
+            );
+
+            InventorySnapshot<ItemStack> invSnapshot = null;
+            InventorySnapshot<ItemStack> enderSnapshot = null;
+            for (ChatTokens.Segment seg : parsed.segments()) {
+                if (seg.tokenType() == TokenType.INV && invSnapshot == null) {
+                    invSnapshot = captureInventory(sender, now, ttlSeconds);
+                } else if (seg.tokenType() == TokenType.ENDER && enderSnapshot == null) {
+                    enderSnapshot = captureEnder(sender, now, ttlSeconds);
+                }
+            }
+
+            getLogger().info("<" + senderName + "> " + rawMessage);
+
+            Map<ItemStack, String> shulkerIds = new IdentityHashMap<>();
+            InventorySnapshot<ItemStack> finalInv = invSnapshot;
+            InventorySnapshot<ItemStack> finalEnder = enderSnapshot;
+            for (Player recipient : recipients) {
+                if (recipient == null || !recipient.isOnline()) {
+                    continue;
+                }
+                String lang = localeOf(recipient);
+                BaseComponent[] line = buildChatLine(
+                        sender, senderDisplayName, chatFormat, parsed, heldSnapshot, offhandItem,
+                        hotbarItems, armorItems, finalInv, finalEnder, shulkerIds, lang, now, ttlSeconds);
+                scheduling.runForPlayer(recipient, () -> {
+                    if (recipient.isOnline()) {
+                        recipient.spigot().sendMessage(line);
+                    }
+                });
+            }
+        });
     }
 
     private static boolean hasTokenPermission(Player player, TokenType type) {
@@ -213,6 +255,8 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
 
     private BaseComponent[] buildChatLine(
             Player sender,
+            String senderDisplayName,
+            String chatFormat,
             ChatTokens.ParseResult parsed,
             ItemStack heldItem,
             ItemStack offhandItem,
@@ -226,8 +270,12 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
             int ttlSeconds
     ) {
         List<BaseComponent> parts = new ArrayList<>();
-        TextComponent prefix = new TextComponent("<" + sender.getDisplayName() + ChatColor.RESET + "> ");
-        parts.add(prefix);
+        String fmt = chatFormat != null ? chatFormat : "<%1$s> %2$s";
+        String withSender = fmt.replace("%1$s", senderDisplayName + ChatColor.RESET);
+        int msgIdx = withSender.indexOf("%2$s");
+        String prefixStr = msgIdx >= 0 ? withSender.substring(0, msgIdx) : "<" + senderDisplayName + ChatColor.RESET + "> ";
+        String suffixStr = msgIdx >= 0 ? withSender.substring(msgIdx + 4) : "";
+        Collections.addAll(parts, TextComponent.fromLegacyText(prefixStr));
 
         for (ChatTokens.Segment seg : parsed.segments()) {
             if (!seg.isToken()) {
@@ -256,6 +304,9 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
             } else if (type == TokenType.ENDER && enderSnapshot != null) {
                 parts.add(buildSnapshotComponent(enderSnapshot, lang));
             }
+        }
+        if (!suffixStr.isEmpty()) {
+            Collections.addAll(parts, TextComponent.fromLegacyText(suffixStr));
         }
         return parts.toArray(new BaseComponent[0]);
     }
@@ -304,10 +355,12 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
             empty.setHoverEvent(hoverText(ServerText.translate(lang, emptyHoverKey)));
             return empty;
         }
-        String name = itemDisplayName(stack);
-        TextComponent tag = new TextComponent("[" + name + ChatItems.countSuffix(stack.getAmount()) + "]");
-        boolean enchanted = stack.getItemMeta() != null && stack.getItemMeta().hasEnchants();
-        tag.setColor(enchanted ? net.md_5.bungee.api.ChatColor.AQUA : net.md_5.bungee.api.ChatColor.WHITE);
+        TextComponent tag = new TextComponent("[");
+        for (BaseComponent namePart : buildItemNameComponents(stack)) {
+            tag.addExtra(namePart);
+        }
+        tag.addExtra(new TextComponent(ChatItems.countSuffix(stack.getAmount()) + "]"));
+        tag.setColor(itemRarityColor(stack));
         HoverEvent hover = itemHover(stack);
         if (hover != null) {
             tag.setHoverEvent(hover);
@@ -317,7 +370,7 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
             List<ItemStack> shulkerContents = extractShulkerItems(stack);
             if (shulkerContents != null) {
                 InventorySnapshot<ItemStack> shulkerSnapshot = cache.storeShulker(
-                        sender.getUniqueId(), name, shulkerContents, now, ttlSeconds);
+                        sender.getUniqueId(), itemDisplayName(stack), shulkerContents, now, ttlSeconds);
                 shulkerId = shulkerSnapshot.id();
             }
             shulkerIds.put(stack, shulkerId);
@@ -326,6 +379,99 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
             tag.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, ChatItems.VIEW_COMMAND_PREFIX + shulkerId));
         }
         return tag;
+    }
+
+    private static BaseComponent[] buildItemNameComponents(ItemStack stack) {
+        ItemMeta meta = stack.getItemMeta();
+        if (meta != null && meta.hasDisplayName()) {
+            return TextComponent.fromLegacyText(meta.getDisplayName());
+        }
+        return new BaseComponent[]{new TranslatableComponent(itemTranslationKey(stack))};
+    }
+
+    private static String itemTranslationKey(ItemStack stack) {
+        try {
+            Method m = stack.getClass().getMethod("translationKey");
+            Object v = m.invoke(stack);
+            if (v instanceof String && !((String) v).isEmpty()) {
+                return (String) v;
+            }
+        } catch (Throwable ignored) {
+            // try Material#getTranslationKey below
+        }
+        Material type = stack.getType();
+        try {
+            Method m = Material.class.getMethod("getTranslationKey");
+            Object v = m.invoke(type);
+            if (v instanceof String && !((String) v).isEmpty()) {
+                return (String) v;
+            }
+        } catch (Throwable ignored) {
+            // construct standard minecraft translation key
+        }
+        return (type.isBlock() ? "block.minecraft." : "item.minecraft.") + type.getKey().getKey();
+    }
+
+    private static net.md_5.bungee.api.ChatColor itemRarityColor(ItemStack stack) {
+        ItemMeta meta = stack.getItemMeta();
+        boolean enchanted = meta != null && meta.hasEnchants();
+        String rarityName = resolveRarityName(stack, meta);
+        if ("EPIC".equals(rarityName)) {
+            return net.md_5.bungee.api.ChatColor.LIGHT_PURPLE;
+        }
+        if ("RARE".equals(rarityName)) {
+            return enchanted ? net.md_5.bungee.api.ChatColor.LIGHT_PURPLE : net.md_5.bungee.api.ChatColor.AQUA;
+        }
+        if ("UNCOMMON".equals(rarityName)) {
+            return enchanted ? net.md_5.bungee.api.ChatColor.AQUA : net.md_5.bungee.api.ChatColor.YELLOW;
+        }
+        return enchanted ? net.md_5.bungee.api.ChatColor.AQUA : net.md_5.bungee.api.ChatColor.WHITE;
+    }
+
+    private static String resolveRarityName(ItemStack stack, ItemMeta meta) {
+        if (meta != null) {
+            try {
+                Method hasRarity = meta.getClass().getMethod("hasRarity");
+                if (Boolean.TRUE.equals(hasRarity.invoke(meta))) {
+                    Object r = meta.getClass().getMethod("getRarity").invoke(meta);
+                    if (r != null) {
+                        return r.toString().toUpperCase(Locale.ROOT);
+                    }
+                }
+            } catch (Throwable ignored) {
+                // older server API
+            }
+        }
+        Material type = stack.getType();
+        try {
+            Object r = Material.class.getMethod("getItemRarity").invoke(type);
+            if (r != null) {
+                return r.toString().toUpperCase(Locale.ROOT);
+            }
+        } catch (Throwable ignored) {
+            // fallback table for 1.16.5 - 1.20.4
+        }
+        String name = type.name();
+        if (name.equals("DRAGON_EGG") || name.equals("ENCHANTED_GOLDEN_APPLE") || name.equals("HEAVY_CORE")
+                || name.equals("DEBUG_STICK") || name.equals("STRUCTURE_BLOCK") || name.equals("JIGSAW")
+                || name.equals("LIGHT") || name.equals("SPAWNER") || name.contains("COMMAND_BLOCK")) {
+            return "EPIC";
+        }
+        if (name.equals("BEACON") || name.equals("CONDUIT") || name.equals("END_CRYSTAL")
+                || name.equals("GOLDEN_APPLE") || name.equals("TRIDENT") || name.equals("MACE")
+                || name.startsWith("MUSIC_DISC_")) {
+            return "RARE";
+        }
+        if (name.equals("ELYTRA") || name.equals("NETHER_STAR") || name.equals("TOTEM_OF_UNDYING")
+                || name.equals("DRAGON_BREATH") || name.equals("EXPERIENCE_BOTTLE") || name.equals("HEART_OF_THE_SEA")
+                || name.equals("ENCHANTED_BOOK") || name.equals("ECHO_SHARD") || name.equals("DISC_FRAGMENT_5")
+                || name.equals("GOAT_HORN") || name.equals("RECOVERY_COMPASS") || name.equals("SNIFFER_EGG")
+                || name.equals("CREEPER_HEAD") || name.equals("DRAGON_HEAD") || name.equals("PLAYER_HEAD")
+                || name.equals("ZOMBIE_HEAD") || name.equals("SKELETON_SKULL") || name.equals("WITHER_SKELETON_SKULL")
+                || name.equals("PIGLIN_HEAD") || name.endsWith("_BANNER_PATTERN") || name.endsWith("_SMITHING_TEMPLATE")) {
+            return "UNCOMMON";
+        }
+        return "COMMON";
     }
 
     private BaseComponent buildSnapshotComponent(InventorySnapshot<ItemStack> snapshot, String lang) {
@@ -359,7 +505,7 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
     private static String itemDisplayName(ItemStack stack) {
         ItemMeta meta = stack.getItemMeta();
         if (meta != null && meta.hasDisplayName()) {
-            return meta.getDisplayName();
+            return ChatColor.stripColor(meta.getDisplayName());
         }
         String raw = stack.getType().name().toLowerCase(Locale.ROOT).replace('_', ' ');
         StringBuilder b = new StringBuilder(raw.length());
@@ -471,66 +617,88 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
     }
 
     private void openSnapshot(Player viewer, String snapshotId) {
-        String lang = localeOf(viewer);
-        InventorySnapshot<ItemStack> snapshot = cache.get(snapshotId, System.currentTimeMillis());
-        if (snapshot == null) {
-            viewer.sendMessage(ChatColor.RED + ServerText.translate(lang, "chatitems.snapshot.expired"));
-            return;
-        }
-        String titleKey;
-        if (snapshot.type() == SnapshotType.INV) {
-            titleKey = "chatitems.gui.inv.title";
-        } else if (snapshot.type() == SnapshotType.ENDER) {
-            titleKey = "chatitems.gui.ender.title";
-        } else {
-            titleKey = "chatitems.gui.shulker.title";
-        }
-        String title = ServerText.translate(lang, titleKey, snapshot.ownerName());
-        ItemStack pane = separatorPane();
-        List<ItemStack> slots = snapshot.toChestSlots(null, pane);
-
-        scheduling.runForPlayer(viewer, () -> {
-            Inventory gui = Bukkit.createInventory(new SnapshotHolder(snapshot.id()), snapshot.type().chestSize(), title);
-            for (int i = 0; i < slots.size(); i++) {
-                ItemStack item = slots.get(i);
-                if (item != null) {
-                    gui.setItem(i, item.clone());
-                }
-            }
-            viewer.openInventory(gui);
-        });
+        openContainerPath(viewer, snapshotId, EMPTY_PATH);
     }
 
-    private void openShulkerSlot(Player viewer, String snapshotId, int slot) {
+    private void openContainerPath(Player viewer, String snapshotId, int[] slotPath) {
+        int[] path = slotPath == null || slotPath.length == 0 ? EMPTY_PATH : slotPath.clone();
+        if (path.length > MAX_CONTAINER_DEPTH) {
+            return;
+        }
         String lang = localeOf(viewer);
-        InventorySnapshot<ItemStack> parent = cache.get(snapshotId, System.currentTimeMillis());
-        if (parent == null) {
-            viewer.sendMessage(ChatColor.RED + ServerText.translate(lang, "chatitems.snapshot.expired"));
+        InventorySnapshot<ItemStack> root = cache.get(snapshotId, System.currentTimeMillis());
+        if (root == null) {
+            String expired = ChatColor.RED + ServerText.translate(lang, "chatitems.snapshot.expired");
+            scheduling.runForPlayer(viewer, () -> viewer.sendMessage(expired));
             return;
         }
         ItemStack pane = separatorPane();
-        List<ItemStack> parentSlots = parent.toChestSlots(null, pane);
-        if (slot < 0 || slot >= parentSlots.size()) {
+        String inspectHint = ServerText.translate(lang, "chatitems.gui.inspect.hint");
+        List<ItemStack> rootSlots = root.toChestSlots(null, pane);
+        String id = root.id();
+
+        if (path.length == 0) {
+            String titleKey;
+            if (root.type() == SnapshotType.INV) {
+                titleKey = "chatitems.gui.inv.title";
+            } else if (root.type() == SnapshotType.ENDER) {
+                titleKey = "chatitems.gui.ender.title";
+            } else {
+                titleKey = "chatitems.gui.shulker.title";
+            }
+            String title = ServerText.translate(lang, titleKey, root.ownerName());
+            int chestSize = root.type().chestSize();
+            scheduling.runForPlayer(viewer, () -> {
+                Inventory gui = Bukkit.createInventory(new SnapshotHolder(id, EMPTY_PATH), chestSize, title);
+                for (int i = 0; i < rootSlots.size() && i < chestSize; i++) {
+                    ItemStack item = rootSlots.get(i);
+                    if (item != null) {
+                        gui.setItem(i, extractShulkerItems(item) != null ? withInspectHint(item, inspectHint) : item.clone());
+                    }
+                }
+                viewer.openInventory(gui);
+            });
             return;
         }
-        ItemStack clicked = parentSlots.get(slot);
-        List<ItemStack> shulkerItems = extractShulkerItems(clicked);
-        if (shulkerItems == null) {
-            return;
+
+        List<ItemStack> currentSlots = rootSlots;
+        ItemStack currentContainer = null;
+        String parentLabel = root.ownerName();
+        for (int depth = 0; depth < path.length; depth++) {
+            int slot = path[depth];
+            int limit = depth == 0 ? currentSlots.size() : InventorySnapshot.SHULKER_SIZE;
+            if (slot < 0 || slot >= limit || slot >= currentSlots.size()) {
+                return;
+            }
+            if (depth > 0 && currentContainer != null) {
+                parentLabel = itemDisplayName(currentContainer);
+            }
+            ItemStack candidate = currentSlots.get(slot);
+            List<ItemStack> inner = extractShulkerItems(candidate);
+            if (inner == null) {
+                return;
+            }
+            currentContainer = candidate;
+            currentSlots = inner;
         }
-        String shulkerTitle = ServerText.translate(lang, "chatitems.gui.shulker.title", itemDisplayName(clicked));
-        ItemStack back = backButton(ServerText.translate(lang, "chatitems.gui.shulker.back"));
-        List<ItemStack> chestSlots = InventorySnapshot.toShulkerWithBackSlots(shulkerItems, null, pane, back);
+
+        String shulkerTitle = ServerText.translate(lang, "chatitems.gui.shulker.title", itemDisplayName(currentContainer));
+        ItemStack back = backButton(
+                ServerText.translate(lang, "chatitems.gui.shulker.back", parentLabel),
+                ServerText.translate(lang, "chatitems.gui.back.hint"));
+        List<ItemStack> chestSlots = InventorySnapshot.toShulkerWithBackSlots(currentSlots, null, pane, back);
+        boolean canDrillDeeper = path.length < MAX_CONTAINER_DEPTH;
 
         scheduling.runForPlayer(viewer, () -> {
             Inventory gui = Bukkit.createInventory(
-                    new SnapshotHolder(parent.id(), parent.id()),
+                    new SnapshotHolder(id, path),
                     InventorySnapshot.SHULKER_WITH_BACK_SIZE,
                     shulkerTitle);
-            for (int i = 0; i < chestSlots.size(); i++) {
+            for (int i = 0; i < chestSlots.size() && i < InventorySnapshot.SHULKER_WITH_BACK_SIZE; i++) {
                 ItemStack item = chestSlots.get(i);
                 if (item != null) {
-                    gui.setItem(i, item.clone());
+                    boolean inspectable = canDrillDeeper && i < InventorySnapshot.SHULKER_SIZE && extractShulkerItems(item) != null;
+                    gui.setItem(i, inspectable ? withInspectHint(item, inspectHint) : item.clone());
                 }
             }
             viewer.openInventory(gui);
@@ -541,20 +709,40 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
         ItemStack pane = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta meta = pane.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(" ");
+            meta.setDisplayName(ChatColor.RESET + " ");
             pane.setItemMeta(meta);
         }
         return pane;
     }
 
-    private static ItemStack backButton(String label) {
+    private static ItemStack backButton(String label, String hint) {
         ItemStack arrow = new ItemStack(Material.ARROW);
         ItemMeta meta = arrow.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(ChatColor.YELLOW + label);
+            meta.setDisplayName(ChatColor.RESET.toString() + ChatColor.YELLOW + label);
+            if (hint != null && !hint.isEmpty()) {
+                meta.setLore(Collections.singletonList(ChatColor.RESET.toString() + ChatColor.GRAY + hint));
+            }
             arrow.setItemMeta(meta);
         }
         return arrow;
+    }
+
+    private static ItemStack withInspectHint(ItemStack stack, String hint) {
+        ItemStack copy = stack.clone();
+        if (hint == null || hint.isEmpty()) {
+            return copy;
+        }
+        ItemMeta meta = copy.getItemMeta();
+        if (meta != null) {
+            List<String> lore = meta.hasLore() && meta.getLore() != null
+                    ? new ArrayList<>(meta.getLore())
+                    : new ArrayList<String>();
+            lore.add(ChatColor.RESET.toString() + ChatColor.GOLD + hint);
+            meta.setLore(lore);
+            copy.setItemMeta(meta);
+        }
+        return copy;
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -566,6 +754,11 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
         if (!(event.getWhoClicked() instanceof Player)) {
             return;
         }
+        ClickType click = event.getClick();
+        if (click != ClickType.LEFT && click != ClickType.RIGHT
+                && click != ClickType.SHIFT_LEFT && click != ClickType.SHIFT_RIGHT) {
+            return;
+        }
         Player viewer = (Player) event.getWhoClicked();
         Inventory top = event.getView().getTopInventory();
         SnapshotHolder holder = (SnapshotHolder) top.getHolder();
@@ -573,15 +766,22 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
         if (rawSlot < 0 || rawSlot >= top.getSize()) {
             return;
         }
-        if (holder.parentSnapshotId() != null) {
-            if (rawSlot == InventorySnapshot.SHULKER_BACK_SLOT) {
-                openSnapshot(viewer, holder.parentSnapshotId());
-            }
+        int[] path = holder.slotPath();
+        if (path.length > 0 && rawSlot == InventorySnapshot.SHULKER_BACK_SLOT) {
+            openContainerPath(viewer, holder.snapshotId(), Arrays.copyOf(path, path.length - 1));
+            return;
+        }
+        if (path.length >= MAX_CONTAINER_DEPTH) {
+            return;
+        }
+        if (path.length > 0 && rawSlot >= InventorySnapshot.SHULKER_SIZE) {
             return;
         }
         ItemStack clicked = top.getItem(rawSlot);
         if (extractShulkerItems(clicked) != null) {
-            openShulkerSlot(viewer, holder.snapshotId(), rawSlot);
+            int[] nextPath = Arrays.copyOf(path, path.length + 1);
+            nextPath[path.length] = rawSlot;
+            openContainerPath(viewer, holder.snapshotId(), nextPath);
         }
     }
 
@@ -643,6 +843,21 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
                 return ChatColor.GRAY;
             default:
                 return ChatColor.WHITE;
+        }
+    }
+
+    private static net.md_5.bungee.api.ChatColor bungeeColor(Reply.Kind kind) {
+        switch (kind) {
+            case TITLE:
+                return net.md_5.bungee.api.ChatColor.GOLD;
+            case DONE:
+                return net.md_5.bungee.api.ChatColor.GREEN;
+            case ERROR:
+                return net.md_5.bungee.api.ChatColor.RED;
+            case HINT:
+                return net.md_5.bungee.api.ChatColor.GRAY;
+            default:
+                return net.md_5.bungee.api.ChatColor.WHITE;
         }
     }
 }

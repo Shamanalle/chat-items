@@ -3,11 +3,11 @@
 ## Stage 1 — Skeleton, Token Parser, and 3-JAR Build
 - `CLAUDE.md` with repository rules.
 - `common/` & `common-j8/` (Java 8 bytecode via Jabel):
-  - Token parser (`[item]`, `[i]`, `[hand]`, `[inv]`, `[ender]`) with per-message token limit (`max_tokens_per_message`).
+  - Token parser (`[item]`, `[i]`, `[hand]`, `[offhand]`, `[armor]`, `[slot1]`–`[slot9]`, `[inv]`, `[ender]`) with per-message token limit (`max_tokens`).
   - Per-player cooldown tracker (`ChatCooldowns`).
-  - Immutable inventory & Ender chest snapshot cache with TTL (`InventorySnapshot`, `SnapshotCache`).
-  - Hot-reloading `.properties` configuration (`SettingsFile`, `ServerSettings`).
-  - `/chatitems` command handler (`status`, `reload`, `view <id>`, setting toggles/limits, `help`).
+  - Immutable inventory, Ender chest, Shulker Box & Bundle snapshot cache with TTL (`InventorySnapshot`, `SnapshotCache`).
+  - Hot-reloading `.properties` configuration (`ServerSettings`).
+  - `/chatitems` command handler (`AdminCommands`: `status`, `reload`, `view <id>`, setting toggles/limits, `help`).
   - 13-language localization (`en_us`, `ru_ru`, `uk_ua`, `de_de`, `fr_fr`, `es_es`, `pt_br`, `pl_pl`, `it_it`, `tr_tr`, `zh_cn`, `ja_jp`, `ko_kr`) verified by `LangConsistencyTest`.
 - `universal/` & `packaging/` (`MergeJars`) producing 3 release JARs (`chat-items-fabric`, `chat-items-forge-neoforge`, `chat-items-bukkit`).
 
@@ -18,4 +18,4 @@
 
 ## Stage 3 — Full 1.16.5 – 26.3 Version Range & Store Pages
 - Expand Fabric/Quilt, Forge, and NeoForge bands across the entire 1.16.5 – 26.3 range (handling NBT vs DataComponents in 1.20.5+, HoverEvent/ClickEvent record API in 1.21.5+, ItemStackTemplate & ContainerInput in 26.x, and permission sets in 1.21.11+).
-- Pixel-art icon generator (`docs/make-icon.py`), bilingual documentation (`README.md`, `README.ru.md`, `CONTRIBUTING.md`, `CHANGELOG.md`), and Modrinth/CurseForge store pages (`docs/modrinth.md`, `docs/store-description.md`, `docs/gallery.json`).
+- Pixel-art icon generator (`docs/make-icon.py`), bilingual documentation (`README.md`, `README.ru.md`, `CONTRIBUTING.md`, `CHANGELOG.md`), and CurseForge/Modrinth store pages (`docs/curseforge.html`, `docs/curseforge-plugin.html`, `docs/modrinth.md`, `docs/store-description.md`, `docs/gallery.json`).

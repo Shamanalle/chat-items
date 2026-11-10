@@ -1,10 +1,11 @@
 package com.kasper.chatitems.server;
 
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Who may change the server's settings (Minecraft up to 1.21.10): the console, operators of level 2
- * or more, and the singleplayer world host.
+ * or more, and the singleplayer world host (not LAN guests).
  */
 public final class AdminPermission {
 
@@ -12,6 +13,9 @@ public final class AdminPermission {
     }
 
     public static boolean isAdmin(CommandSourceStack source) {
-        return McCompat.player(source) == null || source.hasPermission(2) || source.getServer().isSingleplayer();
+        ServerPlayer player = McCompat.player(source);
+        return player == null
+                || source.hasPermission(2)
+                || McCompat.isSingleplayerHost(source.getServer(), player);
     }
 }

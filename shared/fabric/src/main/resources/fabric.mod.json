@@ -4,7 +4,7 @@
   "version": "${version}",
   "name": "Chat Items",
   "icon": "assets/chatitems/icon.png",
-  "description": "Type [item], [inv] or [ender] in chat to show items with tooltips and read-only inventory snapshots. Server-side, vanilla clients welcome.",
+  "description": "Type [item], [armor], [offhand], [slot1]-[slot9], [inv] or [ender] in chat to show items with tooltips, inspect Shulker Boxes & Bundles, and share read-only inventory snapshots. Server-side, vanilla clients welcome.",
   "authors": [
     "Shamanalle"
   ],

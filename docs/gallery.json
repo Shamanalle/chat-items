@@ -19,8 +19,8 @@
   },
   {
     "file": "docs/images/store-shulker.png",
-    "title": "Read-only Shulker Box inspection",
-    "description": "Clicking any Shulker Box inside an [inv] or [ender] snapshot opens its 27 slots in a read-only view with a ← Back button.",
+    "title": "Read-only Shulker Box & Bundle inspection",
+    "description": "Clicking any Shulker Box or Bundle inside an [inv] or [ender] snapshot opens its contents in a read-only view with a ← Back button.",
     "featured": false
   },
   {

@@ -46,9 +46,16 @@ public final class ChatItemsCommand {
                 return 0;
             }
             if (parts.length >= 3) {
+                int depth = parts.length - 2;
+                if (depth > ChatItemsServer.MAX_CONTAINER_DEPTH) {
+                    return 0;
+                }
+                int[] path = new int[depth];
                 try {
-                    int slot = Integer.parseInt(parts[2]);
-                    return ChatItemsServer.openShulkerSlot(player, parts[1], slot) ? 1 : 0;
+                    for (int i = 0; i < depth; i++) {
+                        path[i] = Integer.parseInt(parts[i + 2]);
+                    }
+                    return ChatItemsServer.openContainerPath(player, parts[1], path) ? 1 : 0;
                 } catch (NumberFormatException ignored) {
                     return 0;
                 }
@@ -65,8 +72,15 @@ public final class ChatItemsCommand {
             return 0;
         }
         Reply reply = AdminCommands.execute(trimmed, context(source));
+        boolean interactive = McCompat.player(source) != null;
         for (Reply.Line line : reply.lines()) {
-            Component text = McCompat.literal(line.text()).withStyle(color(line.kind()));
+            ChatFormatting lineColor = color(line.kind());
+            String suggested = interactive ? AdminCommands.suggestedCommand(line.text()) : null;
+            Component text = suggested != null
+                    ? McCompat.literal(line.text()).withStyle(style -> style
+                            .withColor(lineColor)
+                            .withClickEvent(McCompat.clickSuggestCommand(suggested)))
+                    : McCompat.literal(line.text()).withStyle(lineColor);
             McCompat.sendCommandLine(source, text);
         }
         return reply.refused() ? 0 : 1;
@@ -76,7 +90,8 @@ public final class ChatItemsCommand {
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
         String typed = builder.getRemaining();
         SuggestionsBuilder word = builder.createOffset(builder.getStart() + typed.lastIndexOf(' ') + 1);
-        for (String s : AdminCommands.suggestions(typed)) {
+        boolean isAdmin = AdminPermission.isAdmin(ctx.getSource());
+        for (String s : AdminCommands.suggestions(typed, isAdmin)) {
             word.suggest(s);
         }
         return word.buildFuture();
