@@ -107,6 +107,43 @@ class MergeJarsTest {
         assertTrue(e.getMessage().contains("names the refmap"), e.getMessage());
     }
 
+    @Test
+    void jabelCompileOnlyStubIsStrippedAndForeignPackagesAreRejected() throws IOException {
+        Map<String, byte[]> commonFiles = new LinkedHashMap<>();
+        commonFiles.put("com/kasper/chatitems/Common.class", emptyClass("com/kasper/chatitems/Common", Opcodes.V1_8));
+        commonFiles.put("com/github/bsideup/jabel/Desugar.class", emptyClass("com/github/bsideup/jabel/Desugar", Opcodes.V1_8));
+        Path common = folder("commonWithJabel", commonFiles);
+        Path base = folder("baseJabel", Map.of("chatitems-bands.properties", text("bands=mc1_21\n")));
+        Path bandDir = band("b21Jabel", false, Opcodes.V21);
+        Path jabelInBand = bandDir.resolve("com/github/bsideup/jabel/Desugar.class");
+        Files.createDirectories(jabelInBand.getParent());
+        Files.write(jabelInBand, emptyClass("com/github/bsideup/jabel/Desugar", Opcodes.V17));
+        Path out = dir.resolve("clean.jar");
+
+        MergeJars merge = new MergeJars();
+        setMixins(merge);
+        merge.run(out, java.util.List.of(common), java.util.List.of(base), Map.of("mc1_21", bandDir),
+                new HashMap<>(), Integer.MAX_VALUE, Integer.MAX_VALUE, "chatitems-bands.properties");
+
+        try (ZipFile zip = new ZipFile(out.toFile())) {
+            assertNull(zip.getEntry("com/github/bsideup/jabel/Desugar.class"));
+            assertNull(zip.getEntry("com/github/bsideup/jabel/"));
+            zip.stream().filter(e -> e.getName().endsWith(".class")).forEach(e ->
+                    assertTrue(e.getName().startsWith("com/kasper/chatitems/"), "Unexpected class: " + e.getName()));
+        }
+
+        Path pollutedCommon = folder("pollutedCommon", Map.of(
+                "com/kasper/chatitems/Common.class", emptyClass("com/kasper/chatitems/Common", Opcodes.V1_8),
+                "org/example/Foreign.class", emptyClass("org/example/Foreign", Opcodes.V1_8)));
+        MergeJars bad = new MergeJars();
+        setMixins(bad);
+        IllegalStateException err = assertThrows(IllegalStateException.class, () -> bad.run(
+                dir.resolve("bad.jar"), java.util.List.of(pollutedCommon), java.util.List.of(base),
+                Map.of("mc1_21", bandDir), new HashMap<>(), Integer.MAX_VALUE, Integer.MAX_VALUE,
+                "chatitems-bands.properties"));
+        assertTrue(err.getMessage().contains("org/example/Foreign.class"), err.getMessage());
+    }
+
     private static void setMixins(MergeJars merge) {
         merge.mixinConfig = "chatitems.mixins.json";
         merge.mixinPlugin = "com.kasper.chatitems.BandMixins";

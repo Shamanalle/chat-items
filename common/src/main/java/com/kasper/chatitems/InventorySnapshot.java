@@ -28,6 +28,7 @@ public final class InventorySnapshot<S> {
     public static final int INV_ARMOR_SIZE = 4;
     public static final int ENDER_SIZE = 27;
     public static final int SHULKER_SIZE = 27;
+    public static final int ITEM_SHOWCASE_SLOT = 13;
 
     public static final int SHULKER_WITH_BACK_ROWS = 4;
     public static final int SHULKER_WITH_BACK_SIZE = 36;
@@ -129,6 +130,16 @@ public final class InventorySnapshot<S> {
         List<S> out = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             out.add(emptyStack);
+        }
+        if (type == SnapshotType.ITEM) {
+            S pane = separatorStack != null ? separatorStack : emptyStack;
+            for (int i = 0; i < size; i++) {
+                out.set(i, pane);
+            }
+            if (!mainSlots.isEmpty() && mainSlots.get(0) != null) {
+                out.set(ITEM_SHOWCASE_SLOT, mainSlots.get(0));
+            }
+            return Collections.unmodifiableList(out);
         }
         if (type == SnapshotType.ENDER || type == SnapshotType.SHULKER) {
             int limit = Math.min(ENDER_SIZE, mainSlots.size());

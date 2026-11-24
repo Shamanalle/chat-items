@@ -365,18 +365,22 @@ public final class ChatItemsBukkit extends JavaPlugin implements Listener {
         if (hover != null) {
             tag.setHoverEvent(hover);
         }
-        String shulkerId = shulkerIds.get(stack);
-        if (shulkerId == null && !shulkerIds.containsKey(stack)) {
+        String viewId = shulkerIds.get(stack);
+        if (viewId == null && !shulkerIds.containsKey(stack)) {
             List<ItemStack> shulkerContents = extractShulkerItems(stack);
             if (shulkerContents != null) {
                 InventorySnapshot<ItemStack> shulkerSnapshot = cache.storeShulker(
                         sender.getUniqueId(), itemDisplayName(stack), shulkerContents, now, ttlSeconds);
-                shulkerId = shulkerSnapshot.id();
+                viewId = shulkerSnapshot.id();
+            } else {
+                InventorySnapshot<ItemStack> itemSnapshot = cache.storeItem(
+                        sender.getUniqueId(), itemDisplayName(stack), stack.clone(), now, ttlSeconds);
+                viewId = itemSnapshot.id();
             }
-            shulkerIds.put(stack, shulkerId);
+            shulkerIds.put(stack, viewId);
         }
-        if (shulkerId != null) {
-            tag.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, ChatItems.VIEW_COMMAND_PREFIX + shulkerId));
+        if (viewId != null) {
+            tag.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, ChatItems.VIEW_COMMAND_PREFIX + viewId));
         }
         return tag;
     }

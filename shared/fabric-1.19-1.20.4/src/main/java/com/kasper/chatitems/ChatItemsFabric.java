@@ -9,7 +9,9 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.message.v1.ServerMessageDecoratorEvent;
+import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.Connection;
@@ -37,6 +39,7 @@ public class ChatItemsFabric implements ModInitializer {
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             if (handler.player != null) {
                 PlayerLanguage.remove(handler.player.getUUID());
+                ChatItemsServer.clearPendingCompatChat(handler.player.getUUID());
             }
         });
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
@@ -60,7 +63,12 @@ public class ChatItemsFabric implements ModInitializer {
         ServerMessageDecoratorEvent.EVENT.register(
                 ServerMessageDecoratorEvent.CONTENT_PHASE,
                 (sender, message) -> CompletableFuture.completedFuture(
-                        ChatItemsServer.decorateChat(sender, message.getString(), message)));
+                        ChatItemsServer.decorateFabricChat(sender, message.getString(), message)));
+        var compatPhase = ServerMessageDecoratorEvent.CONTENT_PHASE;
+        ServerMessageEvents.ALLOW_CHAT_MESSAGE.addPhaseOrdering(compatPhase, Event.DEFAULT_PHASE);
+        ServerMessageEvents.ALLOW_CHAT_MESSAGE.register(
+                compatPhase,
+                (message, sender, params) -> !ChatItemsServer.consumeAndDeliverCompatChat(sender));
     }
 
     private static Channel channelOf(Object packetListener) {

@@ -1,5 +1,6 @@
 package com.kasper.chatitems;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -86,6 +87,27 @@ public final class SnapshotCache<S> {
         long expiresAt = nowMillis + Math.max(1, ttlSeconds) * 1000L;
         InventorySnapshot<S> snapshot = new InventorySnapshot<>(
                 id, ownerUuid, shulkerTitle, SnapshotType.SHULKER, nowMillis, expiresAt, shulkerSlots, null, null);
+        entries.put(id, snapshot);
+        return snapshot;
+    }
+
+    /**
+     * Stores an immutable single-item showcase snapshot ({@link SnapshotType#ITEM}).
+     */
+    public synchronized InventorySnapshot<S> storeItem(
+            UUID ownerUuid,
+            String itemTitle,
+            S itemStack,
+            long nowMillis,
+            int ttlSeconds
+    ) {
+        pruneExpiredLocked(nowMillis);
+        evictOldestIfFullLocked();
+        String id = nextUniqueIdLocked();
+        long expiresAt = nowMillis + Math.max(1, ttlSeconds) * 1000L;
+        InventorySnapshot<S> snapshot = new InventorySnapshot<>(
+                id, ownerUuid, itemTitle, SnapshotType.ITEM, nowMillis, expiresAt,
+                Collections.singletonList(itemStack), null, null);
         entries.put(id, snapshot);
         return snapshot;
     }

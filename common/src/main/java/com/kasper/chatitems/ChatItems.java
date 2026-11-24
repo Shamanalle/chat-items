@@ -28,7 +28,7 @@ public final class ChatItems {
     public static final int MIN_SNAPSHOT_TTL_SECONDS = 10;
     public static final int MAX_SNAPSHOT_TTL_SECONDS = 3600;
 
-    public static final int DEFAULT_MAX_SNAPSHOTS = 256;
+    public static final int DEFAULT_MAX_SNAPSHOTS = 512;
     public static final int MIN_MAX_SNAPSHOTS = 16;
     public static final int MAX_MAX_SNAPSHOTS = 4096;
 

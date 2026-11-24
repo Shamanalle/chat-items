@@ -8,8 +8,10 @@ public enum SnapshotType {
     INV(6, 54),
     /** Player's ender chest (27 slots) shown in a 3-row (27-slot) chest. */
     ENDER(3, 27),
-    /** Shulker box contents (27 slots) shared in chat via {@code [item]} shown in a 3-row (27-slot) chest. */
-    SHULKER(3, 27);
+    /** Shulker box or bundle contents (27 slots) shared in chat shown in a 3-row (27-slot) chest. */
+    SHULKER(3, 27),
+    /** Single shared item showcase (centered in slot 13 surrounded by separator panes) shown in a 3-row (27-slot) chest. */
+    ITEM(3, 27);
 
     private final int rows;
     private final int chestSize;

@@ -20,9 +20,13 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Shared server-side chat decorator and read-only snapshot opener for Fabric, Forge, and NeoForge.
@@ -31,8 +35,26 @@ public final class ChatItemsServer {
 
     public static final int MAX_CONTAINER_DEPTH = 4;
     private static final int[] EMPTY_PATH = new int[0];
+    private static final long PENDING_COMPAT_TTL_MS = 5000L;
 
     private static final SnapshotCache<ItemStack> CACHE = new SnapshotCache<>();
+    private static final Map<UUID, PendingCompatChat> PENDING_COMPAT = new ConcurrentHashMap<>();
+
+    /** 0 = unchecked, 1 = InGame Messenger present, -1 = not installed. */
+    private static volatile int igmState;
+    private static Method igmPlatformGet;
+    private static Method igmPlatformServer;
+    private static Method igmMayChat;
+
+    private static final class PendingCompatChat {
+        final Component decorated;
+        final long createdAtMillis;
+
+        PendingCompatChat(Component decorated, long createdAtMillis) {
+            this.decorated = decorated;
+            this.createdAtMillis = createdAtMillis;
+        }
+    }
 
     private ChatItemsServer() {
     }
@@ -176,15 +198,19 @@ public final class ChatItemsServer {
                 .append(copy.getHoverName().copy())
                 .append(McCompat.literal(ChatItems.countSuffix(copy.getCount()) + "]"));
         List<ItemStack> shulkerContents = McCompat.shulkerItems(copy);
+        String viewId;
         if (shulkerContents != null) {
             InventorySnapshot<ItemStack> shulkerSnapshot = CACHE.storeShulker(
                     sender.getUUID(), copy.getHoverName().getString(), shulkerContents, now, ttlSeconds);
-            return tag.withStyle(style -> style.withColor(rarityColor)
-                    .withHoverEvent(McCompat.hoverItem(copy))
-                    .withClickEvent(McCompat.clickRunCommand(ChatItems.VIEW_COMMAND_PREFIX + shulkerSnapshot.id())));
+            viewId = shulkerSnapshot.id();
+        } else {
+            InventorySnapshot<ItemStack> itemSnapshot = CACHE.storeItem(
+                    sender.getUUID(), copy.getHoverName().getString(), copy.copy(), now, ttlSeconds);
+            viewId = itemSnapshot.id();
         }
         return tag.withStyle(style -> style.withColor(rarityColor)
-                .withHoverEvent(McCompat.hoverItem(copy)));
+                .withHoverEvent(McCompat.hoverItem(copy))
+                .withClickEvent(McCompat.clickRunCommand(ChatItems.VIEW_COMMAND_PREFIX + viewId)));
     }
 
     private static MutableComponent formatSnapshotTag(InventorySnapshot<ItemStack> snapshot, String lang) {
@@ -395,5 +421,113 @@ public final class ChatItemsServer {
             }
         }
         return ChatItems.settings().language();
+    }
+
+    /**
+     * Decorates chat on Fabric and, when InGame Messenger is active on the server, stages the rich
+     * component so {@link #consumeAndDeliverCompatChat(ServerPlayer)} can broadcast it intact before
+     * InGame Messenger flattens {@code ChatType.CHAT} lines to plain strings.
+     */
+    public static Component decorateFabricChat(ServerPlayer sender, String rawText, Component original) {
+        if (sender != null) {
+            PENDING_COMPAT.remove(sender.getUUID());
+        }
+        Component decorated = decorateChat(sender, rawText, original);
+        if (decorated != original && sender != null && isInGameMessengerActive()) {
+            PENDING_COMPAT.put(sender.getUUID(), new PendingCompatChat(decorated, System.currentTimeMillis()));
+        }
+        return decorated;
+    }
+
+    /**
+     * Consumes a staged Fabric chat component for {@code sender} and delivers it as a rich system chat
+     * line if InGame Messenger is active. Returns {@code true} when the chat event should be cancelled.
+     */
+    public static boolean consumeAndDeliverCompatChat(ServerPlayer sender) {
+        if (sender == null) {
+            return false;
+        }
+        PendingCompatChat pending = PENDING_COMPAT.remove(sender.getUUID());
+        if (pending == null || System.currentTimeMillis() - pending.createdAtMillis > PENDING_COMPAT_TTL_MS) {
+            return false;
+        }
+        return deliverCompatChat(sender, pending.decorated);
+    }
+
+    public static void clearPendingCompatChat(UUID playerId) {
+        if (playerId != null) {
+            PENDING_COMPAT.remove(playerId);
+        }
+    }
+
+    /**
+     * When InGame Messenger is active on the server, broadcasts {@code decoratedBody} as a rich
+     * {@code chat.type.text} component so InGame Messenger preserves item hover tooltips, rarity colors,
+     * and snapshot click events in both live bubbles and chat history.
+     *
+     * @return {@code true} if handled (caller should cancel the plain {@code ChatType.CHAT} event)
+     */
+    public static boolean deliverCompatChat(ServerPlayer sender, Component decoratedBody) {
+        if (sender == null || decoratedBody == null || !isInGameMessengerActive()) {
+            return false;
+        }
+        try {
+            Object allowed = igmMayChat.invoke(null, sender);
+            if (Boolean.FALSE.equals(allowed)) {
+                return true;
+            }
+            McCompat.broadcastSystemChat(sender, decoratedBody);
+            return true;
+        } catch (Throwable t) {
+            ModLog.failure("Delivering rich chat line for InGame Messenger", t);
+            return false;
+        }
+    }
+
+    public static boolean isInGameMessengerActive() {
+        int state = igmState;
+        if (state == 0) {
+            state = initInGameMessenger();
+        }
+        if (state < 0) {
+            return false;
+        }
+        try {
+            Object platform = igmPlatformGet.invoke(null);
+            return platform != null && igmPlatformServer.invoke(platform) != null;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static synchronized int initInGameMessenger() {
+        if (igmState != 0) {
+            return igmState;
+        }
+        for (ClassLoader loader : new ClassLoader[]{
+                ChatItemsServer.class.getClassLoader(),
+                Thread.currentThread().getContextClassLoader()
+        }) {
+            if (loader == null) {
+                continue;
+            }
+            try {
+                Class<?> igmClass = Class.forName("com.sinuxoff.ingamemessenger.InGameMessenger", false, loader);
+                Class<?> platformClass = Class.forName("com.sinuxoff.ingamemessenger.Platform", false, loader);
+                igmPlatformGet = platformClass.getMethod("get");
+                igmPlatformServer = platformClass.getMethod("server");
+                igmMayChat = igmClass.getMethod("mayChat", ServerPlayer.class);
+                igmState = 1;
+                return 1;
+            } catch (ClassNotFoundException ignored) {
+                // try next classloader
+            } catch (Throwable t) {
+                ModLog.failure("Linking InGame Messenger compatibility bridge", t);
+                igmState = -1;
+                return -1;
+            }
+        }
+        igmState = -1;
+        return -1;
     }
 }

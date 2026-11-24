@@ -74,6 +74,19 @@ class SnapshotCacheTest {
         assertEquals("pane", shulker36.get(27));
         assertEquals("back_arrow", shulker36.get(InventorySnapshot.SHULKER_BACK_SLOT));
         assertEquals("pane", shulker36.get(35));
+
+        InventorySnapshot<String> showcase = cache.storeItem(owner, "Dragonbane", "netherite_sword", 1_000L, 60);
+        assertEquals(SnapshotType.ITEM, showcase.type());
+        assertEquals("Dragonbane", showcase.ownerName());
+        List<String> item27 = showcase.toChestSlots("empty", "pane");
+        assertEquals(27, item27.size());
+        for (int i = 0; i < 27; i++) {
+            if (i == InventorySnapshot.ITEM_SHOWCASE_SLOT) {
+                assertEquals("netherite_sword", item27.get(i));
+            } else {
+                assertEquals("pane", item27.get(i));
+            }
+        }
     }
 
     @Test

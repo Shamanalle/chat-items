@@ -191,4 +191,13 @@ public final class McCompat {
         Component chatLine = new TranslatableComponent("chat.type.text", sender.getDisplayName(), decoratedBody);
         server.getPlayerList().broadcastMessage(chatLine, ChatType.CHAT, sender.getUUID());
     }
+
+    public static void broadcastSystemChat(ServerPlayer sender, Component decoratedBody) {
+        MinecraftServer server = sender.getServer();
+        if (server == null) {
+            return;
+        }
+        Component chatLine = new TranslatableComponent("chat.type.text", sender.getDisplayName(), decoratedBody);
+        server.getPlayerList().broadcastMessage(chatLine, ChatType.SYSTEM, Util.NIL_UUID);
+    }
 }

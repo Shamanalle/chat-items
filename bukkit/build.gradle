@@ -50,9 +50,11 @@ processResources {
 }
 
 tasks.named('jar') {
+    includeEmptyDirs = false
     from(sourceSets.folia.output)
     from(project(':common-j8').sourceSets.main.output) {
         exclude 'assets/chatitems/icon.png'
+        exclude 'com/github/bsideup/jabel/**'
     }
 }
 
@@ -66,6 +68,11 @@ tasks.register('checkPluginJar') {
                                 'com/kasper/chatitems/ServerText.class', 'com/kasper/chatitems/bukkit/FoliaScheduling.class']) {
             if (!names.contains(required)) {
                 throw new GradleException("The plugin jar lacks " + required)
+            }
+        }
+        names.findAll { it.endsWith('.class') }.each { String cls ->
+            if (!cls.startsWith('com/kasper/chatitems/')) {
+                throw new GradleException("Unexpected foreign class in plugin jar: " + cls)
             }
         }
     }

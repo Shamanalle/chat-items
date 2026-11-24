@@ -26,12 +26,16 @@ public final class ChatItemsForge {
                 FMLPaths.CONFIGDIR.get().resolve(ServerSettings.FILE_NAME),
                 "Forge");
         RegisterCommandsEvent.BUS.addListener(e -> ChatItemsCommand.register(e.getDispatcher()));
-        ServerChatEvent.BUS.addListener(e -> {
+        ServerChatEvent.BUS.addListener((java.util.function.Predicate<ServerChatEvent>) e -> {
             Component current = e.getMessage();
             Component decorated = ChatItemsServer.decorateChat(e.getPlayer(), e.getRawText(), current);
             if (decorated != current) {
+                if (ChatItemsServer.deliverCompatChat(e.getPlayer(), decorated)) {
+                    return true;
+                }
                 e.setMessage(decorated);
             }
+            return false;
         });
     }
 }

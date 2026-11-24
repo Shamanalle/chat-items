@@ -193,4 +193,13 @@ public final class McCompat {
     public static ServerPlayer player(CommandSourceStack source) {
         return source.getPlayer();
     }
+
+    public static void broadcastSystemChat(ServerPlayer sender, Component decoratedBody) {
+        MinecraftServer server = sender.createCommandSourceStack().getServer();
+        if (server == null) {
+            return;
+        }
+        Component chatLine = Component.translatable("chat.type.text", sender.getDisplayName(), decoratedBody);
+        server.getPlayerList().broadcastSystemMessage(chatLine, false);
+    }
 }

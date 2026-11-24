@@ -30,7 +30,11 @@ public final class ChatItemsForge {
             Component current = e.getMessage();
             Component decorated = ChatItemsServer.decorateChat(e.getPlayer(), e.getRawText(), current);
             if (decorated != current) {
-                e.setMessage(decorated);
+                if (ChatItemsServer.deliverCompatChat(e.getPlayer(), decorated)) {
+                    e.setCanceled(true);
+                } else {
+                    e.setMessage(decorated);
+                }
             }
         });
     }
