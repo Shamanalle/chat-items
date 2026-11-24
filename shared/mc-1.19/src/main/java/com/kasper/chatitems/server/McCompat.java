@@ -21,6 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.ShulkerBoxBlock;
 
+import java.lang.reflect.Method;
 import java.util.List;
 
 /**
@@ -29,7 +30,22 @@ import java.util.List;
  */
 public final class McCompat {
 
+    private static final Method BROADCAST_SYSTEM_BOOL = resolveBroadcastSystemBool();
+
     private McCompat() {
+    }
+
+    private static Method resolveBroadcastSystemBool() {
+        for (Method m : net.minecraft.server.players.PlayerList.class.getMethods()) {
+            Class<?>[] params = m.getParameterTypes();
+            if (m.getReturnType() == void.class
+                    && params.length == 2
+                    && params[0] == Component.class
+                    && params[1] == boolean.class) {
+                return m;
+            }
+        }
+        return null;
     }
 
     public static MutableComponent literal(String text) {
@@ -180,6 +196,16 @@ public final class McCompat {
             return;
         }
         Component chatLine = Component.translatable("chat.type.text", sender.getDisplayName(), decoratedBody);
-        server.getPlayerList().broadcastSystemMessage(chatLine, false);
+        if (BROADCAST_SYSTEM_BOOL != null) {
+            try {
+                BROADCAST_SYSTEM_BOOL.invoke(server.getPlayerList(), chatLine, Boolean.FALSE);
+                return;
+            } catch (ReflectiveOperationException ignored) {
+                // fall back to per-player system message below (Minecraft 1.19.0)
+            }
+        }
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            p.sendSystemMessage(chatLine);
+        }
     }
 }

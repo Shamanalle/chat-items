@@ -15,8 +15,10 @@ import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.Connection;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Proxy;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -64,11 +66,40 @@ public class ChatItemsFabric implements ModInitializer {
                 ServerMessageDecoratorEvent.CONTENT_PHASE,
                 (sender, message) -> CompletableFuture.completedFuture(
                         ChatItemsServer.decorateFabricChat(sender, message.getString(), message)));
-        var compatPhase = ServerMessageDecoratorEvent.CONTENT_PHASE;
-        ServerMessageEvents.ALLOW_CHAT_MESSAGE.addPhaseOrdering(compatPhase, Event.DEFAULT_PHASE);
-        ServerMessageEvents.ALLOW_CHAT_MESSAGE.register(
-                compatPhase,
-                (message, sender, params) -> !ChatItemsServer.consumeAndDeliverCompatChat(sender));
+        registerCompatAllowChat();
+    }
+
+    /**
+     * Registers {@code ServerMessageEvents.ALLOW_CHAT_MESSAGE} via a dynamic proxy so bytecode does
+     * not reference {@code ChatType.Bound} (added in 1.19.1, absent in 1.19.0).
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void registerCompatAllowChat() {
+        try {
+            Event rawEvent = ServerMessageEvents.ALLOW_CHAT_MESSAGE;
+            Class<?> listenerType = Class.forName(
+                    "net.fabricmc.fabric.api.message.v1.ServerMessageEvents$AllowChatMessage",
+                    false,
+                    ChatItemsFabric.class.getClassLoader());
+            Object listener = Proxy.newProxyInstance(
+                    listenerType.getClassLoader(),
+                    new Class<?>[]{listenerType},
+                    (proxy, method, args) -> {
+                        if (args != null) {
+                            for (Object arg : args) {
+                                if (arg instanceof ServerPlayer) {
+                                    return !ChatItemsServer.consumeAndDeliverCompatChat((ServerPlayer) arg);
+                                }
+                            }
+                        }
+                        return Boolean.TRUE;
+                    });
+            var compatPhase = ServerMessageDecoratorEvent.CONTENT_PHASE;
+            rawEvent.addPhaseOrdering(compatPhase, Event.DEFAULT_PHASE);
+            rawEvent.register(compatPhase, listener);
+        } catch (Throwable ignored) {
+            // 1.19.0 or older Fabric API without AllowChatMessage
+        }
     }
 
     private static Channel channelOf(Object packetListener) {
