@@ -7,6 +7,26 @@ and the project uses [Semantic Versioning](https://semver.org/).
 Все заметные изменения проекта записываются в этот файл. Каждая версия описана сначала на английском,
 затем на русском.
 
+## [1.3.0] - 2026-11-24
+
+### English
+
+#### Added
+- Support for **InGame Messenger** (`1.19.2 – 26.3`): item tags (`[item]`, `[offhand]`, `[armor]`, `[slot1]`–`[slot9]`) and snapshot links (`[inv]`, `[ender]`) keep their rarity colors, full enchantment tooltips on hover, and clickable read-only views inside InGame Messenger's chat bubbles and chat history.
+- Clicking any shared item tag (`[item]`, `[offhand]`, `[armor]`, `[slot1]`–`[slot9]`) in chat now opens a read-only showcase window displaying the item in the center slot (or its contents if it is a Shulker Box or Bundle), so players can inspect enchantments and stats even after closing chat.
+
+#### Fixed
+- Fixed a startup crash on Forge and NeoForge when running alongside **Player Statuses** (`com.github.bsideup.jabel` module conflict).
+
+### Русский
+
+#### Добавлено
+- Поддержка мода **InGame Messenger** (`1.19.2 – 26.3`): теги предметов (`[item]`, `[offhand]`, `[armor]`, `[slot1]`–`[slot9]`) и ссылки на снимки (`[inv]`, `[ender]`) сохраняют цвета редкости, полные подсказки с зачарованиями при наведении и кликабельные окна просмотра прямо в сообщениях и истории InGame Messenger.
+- Клик по любому отправленному в чат тегу предмета (`[item]`, `[offhand]`, `[armor]`, `[slot1]`–`[slot9]`) теперь открывает окно-витрину только для просмотра с этим предметом в центральном слоте (либо его содержимое для шалкера и мешочка), чтобы зачарования и характеристики можно было спокойно рассмотреть даже после закрытия чата.
+
+#### Исправлено
+- Исправлен вылет при запуске на Forge и NeoForge при совместной установке с модом **Player Statuses** (конфликт пакета `com.github.bsideup.jabel`).
+
 ## [1.2.0] - 2026-11-10
 
 ### English
